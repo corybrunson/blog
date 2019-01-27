@@ -1,0 +1,23 @@
+theme = "nofancy"
+baseURL = "http://corybrunson.github.io/"
+languageCode = "en-us"
+title = "murmuring in the background"
+
+[permalinks]
+  post = "/:year/:month/:day/:slug/"
+
+[params]
+  highlight = "monokai"
+  topmenu = "categories"
+
+[author]
+  name = "Cory Brunson"
+  orcid = "0000-0003-3126-9494"
+  publons = "1676577"
+  googlescholar = "jcv_PIkAAAAJ"
+  github = "corybrunson"
+  linkedin = "jasoncorybrunson"
+  twitter = "cornelioid"
+  goodreads = "57466005"
+  
+ignoreFiles = [ "\\.[Rr]md$", "\\.[Rr]markdown$", "_files$", "_cache$" ]

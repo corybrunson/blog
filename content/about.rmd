@@ -1,0 +1,24 @@
+---
+draft: false
+date: 2019-01-27
+title: About
+---
+
+## who i am (here)
+
+I'm Cory Brunson<sup>he/him/his</sup>, and this is a lightweight space for me to practice expressing my outlook on matters at least peripherally professional. I completed a PhD in mathematics in 2013, and i'm now a postdoctoral fellow and trainee doing network analysis, data science, and health informatics. I'm an enthusiast for the extended [**tidyverse**](https://www.tidyverse.org/) library, and i'm exploring new techniques and applications of [topological data analysis](https://arxiv.org/abs/1710.04019).
+
+Very soon i'll have a [`hugo-academic`](https://github.com/gcushen/hugo-academic) professional website (it's forcing me to finally upgrade from Mavericks). In the meantime, you can find me at the [Center for Quantitative Medicine](https://health.uconn.edu/quantitative-medicine/) or at the links in the footer.[^nofancy]
+
+[^nofancy]: Thanks to Zack Guo for the [`nofancy` Hugo theme](https://github.com/gizak/nofancy).
+
+## what and how i blog
+
+My schedule and content may evolve, but my goal at the outset is to post fortnightly or so on, or in the vicinity of, four categories: professional development, research progress, methodological technique, and personal curiosity. I want to use this space to express ideas that are messy and incomplete; i'll strive both to read others as charitably as reasonable and to write with the expectation that others will do the same.
+
+I haven't incorporated comments, but feel free to send me feedback via email or social media!
+
+## just for fun
+
+- My Erdős number is [3](https://www.math.vt.edu/people/brown/doc/fibo_number.pdf).
+- My Bacon number is [3](http://www.imdb.com/title/tt1696494/).
