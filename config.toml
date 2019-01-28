@@ -7,7 +7,7 @@ title = "murmuring in the background"
   post = "/:year/:month/:day/:slug/"
 
 [params]
-  highlight = "monokai"
+  highlight = "github"
   topmenu = "categories"
 
 [author]

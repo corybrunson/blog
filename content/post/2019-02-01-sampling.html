@@ -1,0 +1,252 @@
+---
+draft: false
+title: Sampling uniformly from an embedded Klein bottle
+author: ~
+date: 2019-02-01
+slug: uniform-sample-embedded-klein-bottle
+categories: [methodology]
+tags: [statistical topology,software packages]
+---
+
+
+
+<div id="an-apparent-dearth-of-toy-tda-samplers" class="section level3">
+<h3>an apparent dearth of toy TDA samplers</h3>
+<p>Experimenting and practicing with topological data analytic (TDA) tools requires a healthy diversity of suitable data sets. Several real-world classics can be found in various packages, for example the glucose and insulin test data <a href="https://link.springer.com/article/10.1007/BF00423145">collected and analyzed by Reaven and Miller</a> and later <a href="http://diglib.eg.org/handle/10.2312/SPBG.SPBG07.091-100">used by Singh, Carlsson, and Mémoli</a> to illustrate the Mapper construction, which is included in the <strong>heplots</strong> package:</p>
+<pre class="r"><code>data(Diabetes, package = &quot;heplots&quot;)
+head(Diabetes)</code></pre>
+<pre><code>##   relwt glufast glutest instest sspg  group
+## 1  0.81      80     356     124   55 Normal
+## 2  0.95      97     289     117   76 Normal
+## 3  0.94     105     319     143  105 Normal
+## 4  1.04      90     356     199  108 Normal
+## 5  1.00      90     323     240  143 Normal
+## 6  0.76      86     381     157  165 Normal</code></pre>
+<p>For purposes of validation and comparison in particular, we need to supplement empirical data sets, which reflect potentially interesting but unknown topological structure, with artificial data sets that have known, and often simple, intrinsic topology. Probably the most commonly used are simulated samples from a circle, which are straightforward to generate in R:</p>
+<pre class="r"><code>library(magrittr)
+library(tibble)
+library(dplyr)
+library(ggplot2)
+tibble(theta = runif(120, 0, 2*pi)) %&gt;%
+  mutate(x = cos(theta), y = sin(theta)) %&gt;%
+  mutate_at(vars(x, y), funs(. + rnorm(n = length(.), sd = .1))) %&gt;%
+  print() %&gt;%
+  select(x, y) %&gt;%
+  ggplot(aes(x = x, y = y)) + coord_fixed() + geom_point()</code></pre>
+<pre><code>## # A tibble: 120 x 3
+##    theta       x      y
+##    &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;
+##  1 5.95   0.795  -0.503
+##  2 0.742  0.703   0.564
+##  3 5.19   0.510  -0.915
+##  4 1.97  -0.364   0.839
+##  5 4.22  -0.597  -0.907
+##  6 3.67  -1.00   -0.604
+##  7 2.50  -0.742   0.687
+##  8 2.12  -0.420   1.01 
+##  9 3.11  -1.10    0.159
+## 10 4.69  -0.0278 -0.934
+## # … with 110 more rows</code></pre>
+<p><img src="/post/2019-02-01-sampling_files/figure-html/circle%20sample-1.png" width="672" /></p>
+<p>The underlying sampling protocol is, to my understanding, typical:<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a></p>
+<ol style="list-style-type: decimal">
+<li>Pick a topological property to test for. In this case, most researchers want a loop, or a non-trivial generator in <span class="math inline">\(H_1(\,\cdot\,,\mathbb{Z})\)</span>.</li>
+<li>Choose a manifold <span class="math inline">\(M\)</span> having the desired property. The circle <span class="math inline">\(M=S^1\)</span> is the simplest choice.</li>
+<li>Choose a parameterization <span class="math inline">\(f:I\to M\subset\mathbb{R}^m\)</span> from a parameter space <span class="math inline">\(I\)</span> to an embedding of the manifold in an ambient Euclidean space. Most TDA actually depends on a data set having an underlying geometry, from which topological “nearness” is inferred. <em>This choice determines that underlying geometry.</em> Above, the parameter space is <span class="math inline">\([0,2\pi)\)</span> and <span class="math inline">\(f(\theta)=(\cos(\theta),\sin(\theta))\)</span>.</li>
+<li>Sample points <span class="math inline">\(S\subset M\)</span> uniformly from the embedded manifold. The idea of uniformity makes sense because the manifold has a measure induced from the ambient space.</li>
+<li>Optionally, add random noise to <span class="math inline">\(S\)</span>, usually from a standard <span class="math inline">\(m\)</span>-dimensional Gaussian distribution.</li>
+</ol>
+<p>While working with Raoul on <a href="https://github.com/rrrlw/ggtda">the <strong>ggtda</strong> package</a>, i’ve realized both how useful these simple artificial data sets are and how difficult they can be to find or produce. The <strong>TDA</strong> package can <a href="https://rdrr.io/cran/TDA/man/sphereUnif.html">sample uniformly a sphere</a>, and the <strong>KODAMA</strong> package can <a href="https://rdrr.io/cran/KODAMA/man/spirals.html">generate noisy spiral arrangements</a>; but the most comprehensive sources i’ve found are the Python module <strong>TaDAsets</strong>, <a href="https://github.com/scikit-tda/tadasets/blob/master/tadasets/sample.py">which includes three</a>, and <a href="https://lvdmaaten.github.io/drtoolbox/">the Matlab toolbox <strong>drtoolbox</strong></a>, which includes seven. So, i’ve started accumulating “noisy shape” samplers into <a href="https://github.com/corybrunson/tdaunif">a lightweight R package</a> that can be used as an alternative to saving specific samples for illustrative use in packages like <strong>ggtda</strong>. (If a better source exists that i haven’t found, please let me know!)</p>
+</div>
+<div id="what-else-but-a-klein-bottle" class="section level3">
+<h3>what else but a Klein bottle?</h3>
+<p>Naturally, the first thing i wanted to do was sample uniformly from a Klein bottle <span class="math inline">\(\mathbb{K}\)</span>. Parameterizations are easy to find, e.g. <a href="https://en.wikipedia.org/wiki/Klein_bottle#Parametrization">on Wikipedia</a>, and i opted for one that looked most similar to the usual “doughnut” parameterization of the torus in <span class="math inline">\(\mathbb{R}^3\)</span>, namely the “Möbius tube” in <span class="math inline">\(\mathbb{R}^4\)</span>:</p>
+<p><span class="math display">\[\begin{align*}
+w(\theta,\phi) &amp;= (1 + r\cos\theta)\cos\phi \\
+x(\theta,\phi) &amp;= (1 + r\cos\theta)\sin\phi \\
+y(\theta,\phi) &amp;= r\sin\theta\cos\frac{\phi}{2} \\
+z(\theta,\phi) &amp;= r\sin\theta\sin\frac{\phi}{2}
+\end{align*}\]</span></p>
+<p>The parameter space is <span class="math inline">\([0,2\pi)\times[0,2\pi)\ni(\theta,\phi)\)</span>, while <span class="math inline">\(r\)</span> is a constant that determines the shape of the embedded manifold. (Here i’ve simplified the Wikipedia parameterization by setting <span class="math inline">\(R=1\)</span> and assuming that <span class="math inline">\(0\leq r\leq 1\)</span>.) So here’s a <a href="http://adv-r.had.co.nz/Functional-programming.html#closures">closure</a> that takes <code>r</code> as input and returns a parameterization function that sends a data frame of <span class="math inline">\(\theta,\phi\)</span> coordinates to one of <span class="math inline">\((w,x,y,z)\)</span> coordinates:</p>
+<pre class="r"><code>param_klein &lt;- function(r) {
+  if (r &lt; 0 | r &gt; 1) stop(&quot;`r` must be between 0 and 1.&quot;)
+  function(data) {
+    with(data, tibble(
+      w = (1 + r * cos(theta)) * cos(phi),
+      x = (1 + r * cos(theta)) * sin(phi),
+      y = r * sin(theta) * cos(phi / 2),
+      z = r * sin(theta) * sin(phi / 2)
+    ))
+  }
+}</code></pre>
+<p>Sampling is another matter. Though we know the embedding warps the parameter space, stretching parts of it while compressing others, it’s tempting to presuppose that this warping will not vary too much, and just take uniform samples from the parameter space and map them to the ambient space. Here’s where that gets us, without adding additional noise:</p>
+<pre class="r"><code>f_klein &lt;- param_klein(r = .75)
+tibble(theta = runif(360, 0, 2*pi), phi = runif(360, 0, 2*pi)) %&gt;%
+  f_klein() %&gt;%
+  print() %&gt;%
+  pairs(asp = 1, pch = 19, cex = .5, col = &quot;#00000077&quot;)</code></pre>
+<pre><code>## # A tibble: 360 x 4
+##          w        x        y        z
+##      &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+##  1  0.0501 -0.619    0.476   -0.439  
+##  2  0.240  -0.0710  -0.0237   0.00343
+##  3  1.19    1.26     0.126    0.0542 
+##  4  1.33    0.207    0.666    0.0517 
+##  5 -0.485  -0.00258 -0.00145  0.546  
+##  6 -1.63   -0.133   -0.0165   0.404  
+##  7 -0.824   0.559   -0.220   -0.717  
+##  8 -0.0205  0.984    0.525    0.536  
+##  9 -0.0302  1.47    -0.407   -0.416  
+## 10  1.37   -1.09    -0.0194   0.00682
+## # … with 350 more rows</code></pre>
+<p><img src="/post/2019-02-01-sampling_files/figure-html/sample%20klein%20bottle%20uniformly%20from%20parameter%20space-1.png" width="672" /></p>
+<p>The features of the manifold are recognizable: The projection onto <span class="math inline">\(w\)</span> and <span class="math inline">\(x\)</span> is like that of a torus, while complementary “pinches” are discernible in the <span class="math inline">\(y\)</span> and <span class="math inline">\(z\)</span> directions with respect to <span class="math inline">\(w\)</span>. However, it’s also clear that more points have been sampled toward the center of the shape, where the parameterization “moves” most slowly, while fewer have been sampled toward the periphery. While we can visually pick out other regions of higher and lower concentrations, it’s not obvious how to determine how much of this is due to warping by the parameterization versus the angle from which we’re viewing the sample in these scatterplots.</p>
+</div>
+<div id="point-cloud-topology-is-sensitive-to-geometry" class="section level3">
+<h3>point cloud topology is sensitive to geometry</h3>
+<p>To better illustrate the potential problem, let’s go back to the noisy circle. The standard parameterization has the very nice property that the rate at which <span class="math inline">\(f(\theta)\)</span> traverses the circle, with respect to the rate at which <span class="math inline">\(\theta\)</span> proceeds along the interval, is constant. In analytic terms, the gradient <span class="math inline">\(\nabla f=(\frac{\partial x}{\partial\theta},\frac{\partial y}{\partial\theta})\)</span> has constant magnitude. Instead of this standard, consider the alternative, highly suspect parameterization <span class="math inline">\(g:[-2,2)\to\mathbb{R}^2\)</span> given by</p>
+<p><span class="math display">\[g(t) = \begin{cases}
+(t+1,\sqrt{1-(t+1)^2}) &amp; t\leq 0 \\
+(1-t,-\sqrt{1-(1-t)^2}) &amp; t&gt;0
+\end{cases}\]</span></p>
+<p>This map takes the interval <span class="math inline">\([-2,0]\)</span>, shifts it rightward to <span class="math inline">\([-1,1]\)</span>, and lifts it to the upper hemicircle; to complement, it shifts <span class="math inline">\(0,2\)</span> leftward to <span class="math inline">\((-1,1)\)</span>, reverses it (so that the map is continuous at <span class="math inline">\(t=0\)</span>), and drops it to the lower hemicircle. Here’s how the sampling procedure shakes out:</p>
+<pre class="r"><code>tibble(t = runif(120, -2, 2)) %&gt;%
+  mutate(x = ifelse(t &lt;= 0, t + 1, 1 - t)) %&gt;%
+  mutate(y = ifelse(t &lt;= 0, sqrt(1 - x^2), -sqrt(1 - x^2))) %&gt;%
+  mutate_at(vars(x, y), funs(. + rnorm(n = length(.), sd = .1))) %&gt;%
+  select(x, y) %&gt;%
+  ggplot(aes(x = x, y = y)) + coord_fixed() + geom_point()</code></pre>
+<p><img src="/post/2019-02-01-sampling_files/figure-html/sample%20circle%20uniformly%20from%20parameter%20space-1.png" width="672" /></p>
+<p>Notice the sparsity of points near <span class="math inline">\((-1,0)\)</span> and <span class="math inline">\((1,0)\)</span>. This is because, as <span class="math inline">\(x(t)\)</span> moves steadily away from these endpoints, <span class="math inline">\(y(t)\)</span> bolts away from them; so that the Euclidean distance <span class="math inline">\(\sqrt{x^2+y^2}\)</span> between <span class="math inline">\(g(t_0)\)</span> and <span class="math inline">\(g(t_1)\)</span> is larger when <span class="math inline">\(t_0\)</span> and <span class="math inline">\(t_1\)</span> are closer to these endpoints than when they are closer to <span class="math inline">\((0,1)\)</span> or <span class="math inline">\((0,-1)\)</span>. This is the sort of problem we want to be sure to avoid when sampling from the embedded Klein bottle.</p>
+</div>
+<div id="reforming-a-deformed-sampler" class="section level2">
+<h2>reforming a deformed sampler</h2>
+<p>My solution comes from <a href="https://projecteuclid.org/euclid.imsc/1379942050">a very cool paper titled “Sampling from a Manifold”</a>, by mathematicians Persi Diaconis and Mehrdad Shahshahani and statistician Susan Holmes. I don’t remember how i first came across this paper, but i found it simultaneously exciting and exhausting to read — excited by the prospect of using basic calculus and computational trickery to generate uniform manifold samples, exhausted by the way rigorous details were either compactified or outsourced. This post was ultimately motivated by a desire, for my own future benefit at least, to have a thoroughly documented application of their method available for reference.</p>
+<p>Recall the Möbius tube parameterization <span class="math inline">\(f:[0,2\pi)\times[0,2\pi)\to\mathbb{R}^4\)</span> above. To correct for the warping <span class="math inline">\(f\)</span> introduces, the strategy is to measure this warping locally (i.e. as a function of the parameters <span class="math inline">\(\theta\)</span> and <span class="math inline">\(\phi\)</span>) and then filter our random samples in a way that undoes its effects.</p>
+<div id="vector-derivatives" class="section level3">
+<h3>vector derivatives</h3>
+<p>As i alluded in the example of the circle, the warping arises from differences in the rate at which distances in the domain <span class="math inline">\(I\subset\mathbb{R}^2\)</span> translate into distances in the codomain <span class="math inline">\(\mathbb{R}^4\)</span>. That is to say, we measure the warping in terms of derivatives. The vector-valued function <span class="math inline">\(f\)</span> has two inputs and four outputs, so its <span class="math inline">\(4\times 2\)</span> <em>Jacobian</em> (derivative) matrix <span class="math inline">\(J_f\)</span> is given by</p>
+<p><span class="math display">\[J_f=
+\left[\ \frac{\partial f}{\partial\theta}\ \frac{\partial f}{\partial\phi}\ \right]=
+\left[\begin{array}{cc}
+\frac{\partial w}{\partial\theta} &amp; \frac{\partial w}{\partial\phi} \\
+\frac{\partial x}{\partial\theta} &amp; \frac{\partial x}{\partial\phi} \\
+\frac{\partial y}{\partial\theta} &amp; \frac{\partial y}{\partial\phi} \\
+\frac{\partial z}{\partial\theta} &amp; \frac{\partial z}{\partial\phi}
+\end{array}\right]=
+\left[\begin{array}{cc}
+-r\sin\theta\cos\phi &amp; -(1+r\cos\theta)\sin\phi \\
+-r\sin\theta\sin\phi &amp; (1+r\cos\theta)\cos\phi \\
+r\cos\theta\cos\frac{\phi}{2} &amp; -\frac{1}{2}r\sin\theta\sin\frac{\phi}{2} \\
+r\cos\theta\sin\frac{\phi}{2} &amp; \frac{1}{2}r\sin\theta\cos\frac{\phi}{2}
+\end{array}\right]\]</span></p>
+<p>Locally, the domain is composed of rectangles <span class="math inline">\((\theta,\theta+\Delta\theta)\times(\phi,\phi+\Delta\phi)\)</span>, while the codomain is, up to linear approximation, composed of parallelograms <span class="math inline">\((f,f+\frac{\partial f}{\partial\theta}\Delta\theta,f+\frac{\partial f}{\partial\phi}\Delta\phi,f+\frac{\partial f}{\partial\theta}\Delta\theta+\frac{\partial f}{\partial\phi}\Delta\phi)\)</span>. Whereas the domain rectangles have area <span class="math inline">\(\Delta\theta\Delta\phi\)</span>, the codomain parallelograms have area <span class="math inline">\(\Delta A=(\lvert\frac{\partial f}{\partial\theta}\rvert\lvert\frac{\partial f}{\partial\phi}\rvert\cos\omega)\Delta\theta\Delta\phi\)</span>, where <span class="math inline">\(\omega\)</span> is the angle between the vectors <span class="math inline">\(\frac{\partial f}{\partial\theta}\)</span> and <span class="math inline">\(\frac{\partial f}{\partial\phi}\)</span>. The local area function is then <span class="math inline">\(\lvert\frac{\partial f}{\partial\theta}\rvert\lvert\frac{\partial f}{\partial\phi}\rvert\cos\omega\)</span>.</p>
+<p>The more elegant way to understand this<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a> is by imagining that <span class="math inline">\(f\)</span> takes a space, say <span class="math inline">\(\mathbb{R}^2\)</span>, to itself. In this case, the matrix <span class="math inline">\(J_f=\left[\ \frac{\partial f}{\partial\theta}\ \frac{\partial f}{\partial\phi}\ \right]\)</span> consists of the two (column) vectors in <span class="math inline">\(\mathbb{R}^2\)</span> defining the parallelogram corresponding to the unit rectangle based at <span class="math inline">\((\theta,\phi)\in\mathbb{R}^2\)</span>, so that the area of the parallelogram is the absolute value of <span class="math inline">\(\det J_f\)</span>. This generalizes to the formula <span class="math inline">\(j_f=\sqrt{\det({J_f}^\top{J_f})}\)</span> when the domain and codomain have different dimensions.</p>
+<p>A bit of algebra (minus the frustrating hours i lost after forgetting to differentiate constants) yields the Jacobian determinant <span class="math display">\[j_f = r\sqrt{(1+r\cos\theta)^2 + (\frac{1}{2}r\sin\theta)^2}\text.\]</span> As before, the function is returned from a closure that depends on <code>r</code>:</p>
+<pre class="r"><code>jacobian_klein &lt;- function(r) {
+  function(theta) r * sqrt((1 + r * cos(theta)) ^ 2 + (.5 * r * sin(theta)) ^ 2)
+}</code></pre>
+<p>Here’s how the Jacobian determinant — that is, the expanding and contracting of area by the parameterization — depends on <span class="math inline">\(\theta\)</span>:</p>
+<pre class="r"><code>j_klein &lt;- jacobian_klein(r = .75)
+tibble(theta = seq(0, 2*pi, length.out = 60)) %&gt;%
+  mutate(jacobian = j_klein(theta)) %&gt;%
+  print() %&gt;%
+  ggplot(aes(x = theta, y = jacobian)) +
+  ylim(c(0, NA)) +
+  geom_line() +
+  geom_area(fill = &quot;#00000077&quot;)</code></pre>
+<pre><code>## # A tibble: 60 x 2
+##    theta jacobian
+##    &lt;dbl&gt;    &lt;dbl&gt;
+##  1 0         1.31
+##  2 0.106     1.31
+##  3 0.213     1.30
+##  4 0.319     1.29
+##  5 0.426     1.27
+##  6 0.532     1.24
+##  7 0.639     1.21
+##  8 0.745     1.18
+##  9 0.852     1.14
+## 10 0.958     1.10
+## # … with 50 more rows</code></pre>
+<p><img src="/post/2019-02-01-sampling_files/figure-html/klein%20bottle%20jacobian%20versus%20theta-1.png" width="672" /></p>
+<p>Looking back at the scatterplots, the contraction is least near <span class="math inline">\(\theta=0\)</span> and <span class="math inline">\(\theta=2\pi\)</span>, toward the periphery of the Klein bottle where <span class="math inline">\(w\)</span> and <span class="math inline">\(x\)</span> are at their greatest amplitudes (with respect to <span class="math inline">\(\phi\)</span>), and greatest near <span class="math inline">\(\theta=\pi\)</span>, toward the center.</p>
+</div>
+<div id="de-biasing-samples" class="section level3">
+<h3>de-biasing samples</h3>
+<p>We can now use our knowledge of derivatives to preempt the bias they introduce. The motivation is that, if the surface is expanded by a factor of <span class="math inline">\(k\)</span> near the point <span class="math inline">\((\theta_0,\phi_0)\)</span>, then <span class="math inline">\(k\)</span> times as many points should be sampled there, so that the density of points on the warped surface is uniform. The idea of <em>rejection sampling</em>, with a density function <span class="math inline">\(\delta:I\to[0,1]\)</span>, is to sample many points uniformly and then retain each point <span class="math inline">\((\theta_0,\phi_0)\)</span> with probability <span class="math inline">\(\delta(\theta_0,\phi_0)\)</span>.</p>
+<p>In fact, we don’t have to calculate the density function exactly, so that it has unit integral over the domain <span class="math inline">\(I\)</span>; it is enough to make sure that we retain samples in the correct proportion. Since the Jacobian is maximized at <span class="math inline">\(\theta=0\)</span> for any choice of <span class="math inline">\(r\)</span>,<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a> this can be accomplished as follows:</p>
+<ol style="list-style-type: decimal">
+<li>Sample <span class="math inline">\(\theta\in[0,2\pi)\)</span> uniformly.</li>
+<li>Sample <span class="math inline">\(\eta\in[0,j_f(0)]\)</span> uniformly.</li>
+<li>If <span class="math inline">\(j_f(\theta) &gt; \eta\)</span>, then retain the value <span class="math inline">\(\theta\)</span>; otherwise, reject <span class="math inline">\(\theta\)</span>.</li>
+</ol>
+<p>Effectively, we retain <span class="math inline">\(\theta\)</span> when <span class="math inline">\((\theta,\eta)\)</span> lies in the shaded region above and reject it when not. The procedure repeats until enough values are retained. This leads me to the following rejection sampler:</p>
+<pre class="r"><code>sample_klein_theta &lt;- function(n, r) {
+  x &lt;- c()
+  while (length(x) &lt; n) {
+    theta &lt;- stats::runif(n, 0, 2 * pi)
+    jacobian &lt;- jacobian_klein(r)
+    jacobian_theta &lt;- sapply(theta, jacobian)
+    eta &lt;- stats::runif(n, 0, jacobian(0))
+    x &lt;- c(x, theta[jacobian_theta &gt; eta])
+  }
+  x[1:n]
+}
+sample_klein &lt;- function(n, r) {
+  d &lt;- tibble(
+    phi = stats::runif(n, 0, 2*pi),
+    theta = sample_klein_theta(n, r)
+  )
+  f &lt;- param_klein(r)
+  f(d)
+}</code></pre>
+<p>We can compare this to the naïve sampler above that did not account for warping by the parameterization:</p>
+<pre class="r"><code>sample_klein(n = 360, r = .75) %&gt;%
+  print() %&gt;%
+  pairs(asp = 1, pch = 19, cex = .5, col = &quot;#00000077&quot;)</code></pre>
+<pre><code>## # A tibble: 360 x 4
+##         w       x        y       z
+##     &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;
+##  1 -0.142 -0.859   0.478   -0.563 
+##  2  0.502  1.53   -0.348   -0.252 
+##  3  1.14   0.440  -0.705   -0.132 
+##  4 -0.994  1.08    0.236    0.538 
+##  5  0.750 -1.13    0.581   -0.312 
+##  6 -0.217  0.129   0.0145   0.0526
+##  7  0.328 -0.0611 -0.343    0.0316
+##  8 -1.66  -0.546  -0.00246  0.0154
+##  9 -0.323  1.20    0.431    0.563 
+## 10 -0.908  1.23    0.239    0.472 
+## # … with 350 more rows</code></pre>
+<p><img src="/post/2019-02-01-sampling_files/figure-html/sample%20klein%20bottle%20uniformly%20within%20ambient%20space-1.png" width="672" /></p>
+<p>The differences are minor in most of the coordinate scatterplots, but the concentration of points near the center of the <span class="math inline">\(w,x\)</span>-projection is clearly less than before, and not discernibly different at this “inner” region of the surface than at the “outer” regions.</p>
+</div>
+<div id="validation-via-persistent-homology" class="section level3">
+<h3>validation via persistent homology</h3>
+<p>It makes sense to wrap up with a validation test. In an inversion of the usual protocol, i’ll use a widely-used implementation of persistent homology (PH) to validate my sampler. Since PH is based on distances in the ambient space <span class="math inline">\(\mathbb{R}^4\)</span>, the topological features of the Klein bottle — two generators of the rank-1 homology group <span class="math inline">\(H_1(\mathbb{K},\mathbb{Z})\)</span> — should be more clearly discernible from the points sampled uniformly from the embedded manifold than from those embedded from a uniform sample on the parameter space. In order to better illustrate the limiting case, i’ve boosted the sample size to 840 and set the minor radius to half the major radius. Here are the persistence diagrams for both samples:</p>
+<pre class="r"><code>f_klein &lt;- param_klein(r = .5)
+tibble(theta = runif(840, 0, 2*pi), phi = runif(840, 0, 2*pi)) %&gt;%
+  f_klein() %&gt;%
+  as.matrix() %&gt;%
+  TDAstats::calculate_homology(dim = 1) %&gt;%
+  TDAstats::plot_persist() -&gt;
+  ph_klein_warp
+sample_klein(n = 840, r = .5) %&gt;%
+  as.matrix() %&gt;%
+  TDAstats::calculate_homology(dim = 1) %&gt;%
+  TDAstats::plot_persist() -&gt;
+  ph_klein_unif
+gridExtra::grid.arrange(ph_klein_warp, ph_klein_unif, ncol = 2)</code></pre>
+<p><img src="/post/2019-02-01-sampling_files/figure-html/persistent%20homology%20of%20klein%20bottle%20samples-1.png" width="672" /></p>
+<p>Indeed, while PH captures the topology of <span class="math inline">\(\mathbb{K}\)</span> from both samples, the noise is noticeably reduced in the latter. Voila!</p>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Some of these steps might be permuted, e.g. one could generate noise in the parameter space before embedding the sample, depending on what real-world problem you wants to simulate.<a href="#fnref1">↩</a></p></li>
+<li id="fn2"><p>Here’s where i’ll corroborate the authors’ recommendation of <a href="https://archive.org/details/HubbardJ.H.HubbardB.B.VectorCalculusLinearAlgebraAndDifferentialFormsAUnifiedApp/">the book by Hubbard and Hubbard</a>.<a href="#fnref2">↩</a></p></li>
+<li id="fn3"><p>By my handiwork, <span class="math inline">\(\frac{\partial j_f}{\partial\theta}\)</span> has numerator <span class="math inline">\(-r^2\sin\theta(4+3r\cos\theta)\)</span>, which vanishes at <span class="math inline">\(\theta=0,\pi\)</span>.<a href="#fnref3">↩</a></p></li>
+</ol>
+</div>
