@@ -30,6 +30,7 @@ body {
 }
 
 .header .site-title {
+	text-transform: none;
 	font-weight: bold;
 	color: #484848;
 	font-family: "Raleway", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
