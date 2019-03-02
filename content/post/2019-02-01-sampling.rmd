@@ -2,11 +2,10 @@
 draft: false
 title: Sampling uniformly from an embedded Klein bottle
 author: ~
-date: 2019-01-28
-publishdate: 2019-02-01
+date: 2019-02-01
 slug: uniform-sample-embedded-klein-bottle
 categories: [methodology]
-tags: [statistical topology,software packages]
+tags: [statistical topology,software packages,klein bottle]
 ---
 
 ```{r knitr options, echo=FALSE}

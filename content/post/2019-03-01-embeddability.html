@@ -1,0 +1,362 @@
+---
+draft: false
+title: embed with the Petersens
+author: ~
+date: 2019-03-01
+categories: [curiosity]
+tags: [graph theory,embeddability,petersen family]
+---
+
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/plotly-binding/plotly.js"></script>
+<script src="/rmarkdown-libs/typedarray/typedarray.min.js"></script>
+<script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
+<link href="/rmarkdown-libs/crosstalk/css/crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
+<link href="/rmarkdown-libs/plotly-htmlwidgets-css/plotly-htmlwidgets.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/plotly-main/plotly-latest.min.js"></script>
+
+
+<div id="inreach" class="section level3">
+<h3>inreach</h3>
+<p>I make a habit of responding when people reach out for mathematical support in their work, at least when i think i can contribute something. An interesting network effect of this habit is that i actually get more second-hand (i.e. forwarded) feelers from colleagues than first-hand requests. As a result, i’ve gotten exposure to a lot of disciplines and questions that i’d’ve otherwise been unaware of entirely, for example the problem of feature identification in the immune profiles of cancer patients and the statistical bookkeeping required to model the nested factors determining medical imaging phenotypes.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> Often these discussions fizzle out, but oftener they lead to potentially productive collaborations — i stress <em>potentially</em>, because to date i don’t have any publications to show for them.</p>
+<p>(Let me flag this story with the caveat that early-career researchers in particular take serious risks by taking on service or outreach duties, let alone concurrent research or teaching projects, outside our career-building programs, and that i’ve been extremely lucky to have a principal investigator who encourages me to follow my interests insofar as they don’t interfere with my primary output.)</p>
+<p>This is how i recently connected with a cell biologist who was looking for someone to assist them in a network analysis of some new imagery. I’ll provide context once the work is out, but a key motivating question is actually one of the defining topics of the field: <em>embeddability</em>.</p>
+</div>
+<div id="embeddability" class="section level2">
+<h2>embeddability</h2>
+<p>I don’t have a handy account of how graph theory emerged as a discipline through the unification of relational problems in several disciplines, or of how network analysis emerged from a similar synthesis in the last few decades. (I’d welcome suggestions.) And i’ve only taken one formal course on graph theory myself, which focused (as most of my coursework did) almost entirely on proofs. So i’ve spent some time over the past few weeks reading up on this topic. I know that several provable criteria and polynomial-time algorithms have been published to help identify graphs as planar or non-planar; but, since my own interests have always been more consolidative,<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> what really caught my attention was the planarity criterion of Colin de Verdière — not because the criterion is elegantly expressed, but because it frames (an enthusiast might say, <em>realizes</em>) planarity as one level in a hierarchy of embeddability properties.</p>
+<div id="de-verdieres-mu" class="section level3">
+<h3>de Verdière’s <span class="math inline">\(\mu\)</span></h3>
+<p>De Verdière’s contribution is almost always cited to two papers, <a href="https://www.sciencedirect.com/science/article/pii/009589569090093F">an original in French</a> that i can’t very efficiently read, and <a href="https://scholar.google.com/scholar?cluster=12299736116764432931">a translation</a> i haven’t been able to access. So i’ll refer anyone interested (who doesn’t read French) to <a href="https://pdfs.semanticscholar.org/5284/73d4b7625982a8f479addb5cca3fb70a3654.pdf">a review paper by van der Holst, Lovász, and Schrijver</a> devoted entirely to his technique and the literature it generated. For an undirected graph <span class="math inline">\(G\)</span> with <span class="math inline">\(n\)</span> nodes, it boils down to the statistic <span class="math inline">\(0\leq\mu(G)\leq n\)</span>, roughly defined as <em>the largest possible nullity of a normalized weighted adjacency matrix of <span class="math inline">\(G\)</span> whose kernel does not contain the weighted adjacency matrices of its complement</em>. That’s a terrible summary — see the review paper for a good one — but it gets at what i gather is the central tension of the idea: that encoding the adjacencies of <span class="math inline">\(G\)</span> in a small number of dimensions makes it difficult to ….</p>
+<p>I’m still wrapping my mind around this statistic. But the consolidative upshot is much more straightforward: The values of <span class="math inline">\(\mu\)</span> provide a nested family of embeddability properties:</p>
+<ol style="list-style-type: decimal">
+<li><span class="math inline">\(\mu(G)\leq 0\)</span> when <span class="math inline">\(G\)</span> consists of one node (i.e. is embeddable in a point).</li>
+<li><span class="math inline">\(\mu(G)\leq 1\)</span> when <span class="math inline">\(G\)</span> consists of one or more disjoint paths (i.e. is embeddable in a line).</li>
+<li><span class="math inline">\(\mu(G)\leq 2\)</span> when <span class="math inline">\(G\)</span> is <em>outerplanar</em> (i.e. is embeddable in a disk with its nodes on the boundary).</li>
+<li><span class="math inline">\(\mu(G)\leq 3\)</span> when <span class="math inline">\(G\)</span> is planar (i.e. is embeddable in a plane).</li>
+<li><span class="math inline">\(\mu(G)\leq 4\)</span> when <span class="math inline">\(G\)</span> is linklessly, or flatly, embeddable (i.e. is embeddable in 3-space in such a way that any two cycles are embedded in separate spheres).</li>
+</ol>
+<p>A good first exercise is to convince yourself that the complete graphs discriminate these properties, i.e. <span class="math inline">\(\mu(K_n)=n-1\)</span>, which provides an anchor for understanding the linear algebra underlying the statistic.</p>
+<p>Anyway, de Verdière’s statistic transforms the binary question of whether a graph is planar into a question of at what level of the embeddability hierarchy a graph lies. Unfortunately, the research to date does not provide a computational means of answering it. Since our graphs were evidently not unions of paths, we began by testing for planarity.</p>
+</div>
+<div id="planarity" class="section level3">
+<h3>planarity</h3>
+<p>The Boyer–Myrvold planarity test is implemented in <a href="http://bioconductor.org/packages/release/bioc/html/RBGL.html">the Bioconductor package <strong>RBGL</strong> by Carey, Long, and Gentleman</a>, but the current version required some hacking to work with our <strong>igraph</strong> objects. Here’s the code i used:</p>
+<pre class="r"><code># ensure that a graph is undirected and unweighted, and warn if changes are made
+planarity_prep &lt;- function(graph, silent = TRUE) {
+  was_directed &lt;- igraph::is_directed(graph)
+  was_weighted &lt;- igraph::is_weighted(graph)
+  if (! silent &amp; (was_directed | was_weighted)) {
+    warning(
+      &quot;Converting `graph` to an &quot;,
+      if (was_directed) &quot;undirected&quot;,
+      if (was_directed &amp; was_weighted) &quot;, &quot;,
+      if (was_weighted) &quot;unweighted&quot;,
+      &quot; graph.&quot;
+    )
+  }
+  if (was_directed) graph &lt;- igraph::as.undirected(graph)
+  if (was_weighted) graph &lt;- igraph::delete_edge_attr(graph, &quot;weight&quot;)
+  graph
+}
+# planarity test for &#39;igraph&#39; objects
+# based on `RBGL::boyerMyrvoldPlanarityTest()`
+is_planar &lt;- function(graph, silent = TRUE) {
+  # ensure that graph is undirected and unweighted
+  graph &lt;- planarity_prep(graph, silent = silent)
+  # prepare edge matrix
+  nv &lt;- igraph::vcount(graph)
+  em &lt;- t(igraph::as_edgelist(graph, names = FALSE))
+  ne &lt;- ncol(em)
+  # perform planarity test
+  require(&quot;RBGL&quot;)
+  ans &lt;- .Call(
+    &quot;boyerMyrvoldPlanarityTest&quot;,
+    as.integer(nv), as.integer(ne), as.integer(em - 1),
+    PACKAGE = &quot;RBGL&quot;
+  )
+  # return logical result
+  as.logical(ans)
+}</code></pre>
+<p>To validate the implementation, we test the complete graphs <span class="math inline">\(K_4\)</span> (which is planar) and <span class="math inline">\(K_5\)</span> (which is not), as well as <a href="https://en.wikipedia.org/wiki/Goldner%E2%80%93Harary_graph">the Goldner–Harary graph</a>, which is <em>maximally</em> planar in the sense that any additional links would violate planarity.</p>
+<pre class="r"><code># complete graph on 4 nodes
+print(is_planar(igraph::make_full_graph(n = 4)))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code># complete graph on 5 nodes
+print(is_planar(igraph::make_full_graph(n = 5)))</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code># Goldner-Harary graph
+goldner_harary &lt;- igraph::make_graph(
+  c(
+    1,2, 1,3,
+    1,4, 1,5, 1,6, 1,7, 1,8,
+    1,11,
+    2,5, 2,6, 3,6, 3,7,
+    4,5, 5,6, 6,7, 7,8,
+    5,9, 6,9, 6,10, 7,10,
+    4,11, 5,11, 6,11, 7,11, 8,11,
+    9,11, 10,11
+  ),
+  directed = FALSE
+)
+print(is_planar(goldner_harary))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
+<div id="forbidden-minors" class="section level3">
+<h3>forbidden minors</h3>
+<p>Some of our empirical graphs turned out to be non-planar, which bumped the question up to that of linklessness — testing whether a graph <span class="math inline">\(G\)</span> has a flat embedding, i.e. whether <span class="math inline">\(\mu(G)\leq 4\)</span>. Criteria exist to test for this property, but i couldn’t find any direct implementations. So i sought out some indirect approaches to the question.</p>
+<p>It didn’t take long to find <a href="https://www.sciencedirect.com/science/article/pii/S0012365X05002980">this thorough review by Ramírez Alfonsín of linklessness and linkedness in embedded graphs</a>. One promising (that is to say, plausibly tractable) result (Theorem 2.4) is that a graph has a linkless embedding if and only if it contains none of the Petersen family of graphs as a minor. <a href="https://en.wikipedia.org/wiki/Graph_minor">Graph minors</a> are pretty straightforward, though they might be difficult to systematically test. And anyway the Petersen family is pretty fun on its own.</p>
+</div>
+</div>
+<div id="the-petersen-family" class="section level2">
+<h2>the Petersen family</h2>
+<p>The original <em>Petersen graph</em> looks like this:</p>
+<pre class="r"><code>library(igraph)
+library(tidygraph)
+# Petersen graph
+make_graph(&quot;Petersen&quot;) %&gt;%
+  as_tbl_graph() %&gt;%
+  print() -&gt; petersen</code></pre>
+<pre><code>## # A tbl_graph: 10 nodes and 15 edges
+## #
+## # An undirected simple graph with 1 component
+## #
+## # Node Data: 10 x 0 (active)
+## #
+## # Edge Data: 15 x 2
+##    from    to
+##   &lt;int&gt; &lt;int&gt;
+## 1     1     2
+## 2     1     5
+## 3     1     6
+## # … with 12 more rows</code></pre>
+<p>And it might be rendered like this:</p>
+<pre class="r"><code>library(ggraph)
+qgraph &lt;- function(graph) {
+  graph %&lt;&gt;% as_tbl_graph() %&gt;%
+    activate(nodes) %&gt;%
+    mutate(id = 1:nrow(.N()))
+  qg &lt;- ggraph(graph, layout = &quot;nicely&quot;) +
+    theme_graph() +
+    geom_edge_link() +
+    geom_node_label(aes(label = id))
+  plot(qg)
+  invisible(qg)
+}
+qgraph(petersen)</code></pre>
+<p><img src="/post/2019-03-01-embeddability_files/figure-html/plot%20petersen%20graph-1.png" width="288" /></p>
+<p>The <em>Petersen family</em> consists of seven graphs, up to isomorphism, that can be obtained from the original using so-called <span class="math inline">\(Y\)</span>–<span class="math inline">\(\Delta\)</span> and <span class="math inline">\(\Delta\)</span>–<span class="math inline">\(Y\)</span> operations.</p>
+<div id="ydelta-and-deltay" class="section level3">
+<h3><span class="math inline">\(Y\)</span>–<span class="math inline">\(\Delta\)</span> and <span class="math inline">\(\Delta\)</span>–<span class="math inline">\(Y\)</span></h3>
+<p>Their names refer to the subgraphs that are exchanged in each operation, namely a 3-star (<span class="math inline">\(Y\)</span>) and a 3-cycle (<span class="math inline">\(\Delta\)</span>). The operations aren’t implemented in <strong>igraph</strong>, so here’s a clunky implementation usinng the R frontend:</p>
+<pre class="r"><code># Y-Delta operations
+wye_delta &lt;- function(graph, v) {
+  if (! all(degree(graph, v) == 3)) stop(&quot;Node(s) must have degree 3.&quot;)
+  if (ecount(induced_subgraph(graph, v)) &gt; 0) stop(&quot;Nodes cannot be adjacent.&quot;)
+  nbhds &lt;- mapply(setdiff, neighborhood(graph, 1, v), v)
+  graph &lt;- add_edges(graph, apply(nbhds, 2, combn, m = 2))
+  graph &lt;- delete_vertices(graph, v)
+  graph
+}
+# Delta-Y operations
+delta_wye &lt;- function(graph, vt) {
+  if (length(vt) %% 3 != 0) stop(&quot;Nodes must be triples.&quot;)
+  if (is.matrix(vt) &amp;&amp; nrow(vt) != 3) stop(&quot;Encode triples in matrix columns.&quot;)
+  if (! is.matrix(vt)) vt &lt;- matrix(vt, nrow = 3)
+  tv &lt;- vcount(graph) + 1:ncol(vt)
+  graph &lt;- add_vertices(graph, ncol(vt))
+  graph &lt;- add_edges(graph, rbind(as.vector(vt), rep(tv, each = 3)))
+  graph &lt;- delete_edges(graph, get.edge.ids(graph, apply(vt, 2, combn, m = 2)))
+  graph
+}</code></pre>
+<p><code>wye_delta()</code> takes the vector of nodes <code>v</code> to be the centers of the 3-stars that will be converted to 3-cycles. These are required to have degree 3 and to be non-adjacent, so that there is no ambiguity when removing them. <code>delta_wye()</code> takes a vector or 3-row matrix of nodes <code>vt</code> that encode the 3-cycles. As with other <strong>igraph</strong> functions, these parameters will use numeric or character vectors as node IDs.</p>
+</div>
+<div id="petersen-relations" class="section level3">
+<h3>Petersen relations</h3>
+<p>To see how the Petersen family graphs are related by these operations, check out <a href="https://arxiv.org/abs/1008.0377">this preprint by O’Donnol</a>.
+Viewing the Petersen family as a partially ordered set with respect to <span class="math inline">\(Y\)</span>–<span class="math inline">\(\Delta\)</span> and <span class="math inline">\(\Delta\)</span>–<span class="math inline">\(Y\)</span> operations, there are four extremal elements: the original Petersen graph and a graph named <span class="math inline">\(K_{4,4}\smallsetminus e\)</span>,<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a> which cannot be <span class="math inline">\(\Delta\)</span>–<span class="math inline">\(Y\)</span>’d (they have no 3-cycles), and the complete graph <span class="math inline">\(K_6\)</span> and the complete tripartite graph <span class="math inline">\(K_{3,3,1}\)</span>, which cannot be <span class="math inline">\(Y\)</span>–<span class="math inline">\(\Delta\)</span>’d (without introducing multiple links).</p>
+<p>Following O’Donnol, and through some trial and error, i generated the Petersen family using the exchange operations, starting from <span class="math inline">\(K_6\)</span> to get <span class="math inline">\(G_7\)</span>:</p>
+<pre class="r"><code>library(magrittr)
+# complete graph on 6 nodes
+make_full_graph(6) %T&gt;% qgraph() -&gt; k6</code></pre>
+<p><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family-1.png" width="288" /></p>
+<pre class="r"><code># G_7 via Delta-Y operation on K_6 at an arbitrary 3-cycle
+delta_wye(k6, c(1,2,3)) %T&gt;% qgraph() -&gt; g7</code></pre>
+<p><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family-2.png" width="288" /></p>
+<p>To illustrate how the simple relations among the family hinge on isomorphism classes, in the next step i perform all possible <span class="math inline">\(\Delta\)</span>–<span class="math inline">\(Y\)</span> operations on <span class="math inline">\(G_7\)</span> and test the results for isomorphicity:</p>
+<pre class="r"><code># all possible Delta-Y children
+g7_children &lt;- list(
+  delta_wye(g7, c(1,4,5)),
+  delta_wye(g7, c(2,4,5)),
+  delta_wye(g7, c(3,4,5)),
+  delta_wye(g7, c(3,4,6)),
+  delta_wye(g7, c(3,5,6)),
+  delta_wye(g7, c(4,5,6))
+)
+par(mfrow = c(2, 3))
+for (i in seq_along(g7_children)) qgraph(g7_children[[i]])</code></pre>
+<p><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%202-1.png" width="288" /><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%202-2.png" width="288" /><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%202-3.png" width="288" /><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%202-4.png" width="288" /><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%202-5.png" width="288" /><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%202-6.png" width="288" /></p>
+<pre class="r"><code>par(mfrow = c(1, 1))
+# check which are isomorphic
+isomat &lt;- matrix(NA_integer_, nrow = 6, ncol = 6)
+for (i in 1:5) for (j in (i+1):6) {
+  isomat[i,j] &lt;- isomat[j,i] &lt;-
+    as.integer(isomorphic(g7_children[[i]], g7_children[[j]]))
+}
+print(isomat)</code></pre>
+<pre><code>##      [,1] [,2] [,3] [,4] [,5] [,6]
+## [1,]   NA    1    1    1    1    0
+## [2,]    1   NA    1    1    1    0
+## [3,]    1    1   NA    1    1    0
+## [4,]    1    1    1   NA    1    0
+## [5,]    1    1    1    1   NA    0
+## [6,]    0    0    0    0    0   NA</code></pre>
+<pre class="r"><code># G_8 and K_44-e via Delta-Y operations on G_7
+delta_wye(g7, c(3,4,5)) -&gt; g8
+delta_wye(g7, c(4,5,6)) -&gt; k44_e</code></pre>
+<p>Of the six possible <span class="math inline">\(\Delta\)</span>–<span class="math inline">\(Y\)</span> operations on <span class="math inline">\(G_7\)</span>, five produce <span class="math inline">\(G_8\)</span> while one produces <span class="math inline">\(K_{4,4}\smallsetminus e\)</span>, indicating that the latter is in some sense less accessible than the former. Does that make <span class="math inline">\(K_{4,4}\smallsetminus e\)</span>, as its name would suggest, somehow less natural? Is the answer totally obvious to someone who’s absorbed the implications of embeddability as a theory, even if they haven’t directly observed the Petersen family before? (Does that even make sense?) Whether i come back to these questions is anyone’s guess.</p>
+<p>Anyway, the exchange operations can now take <span class="math inline">\(G_8\)</span> up and down the rest of the poset, with a check at the end that we’ve arrived at the original Petersen graph. In these latter steps i’ve only presented one way to obtain each Petersen family member, but in each case there may be several.</p>
+<pre class="r"><code># K_331 via Y-Delta operation on G_8
+wye_delta(g8, 3) -&gt; k331
+# G_9 via Delta-Y operation on G_8
+delta_wye(g8, c(1,5,6)) -&gt; g9
+# G_10 via Delta-Y operation on G_9
+delta_wye(g9, c(2,4,6)) -&gt; g10
+par(mfrow = c(1, 3))
+qgraph(k331); qgraph(g9); qgraph(g10)</code></pre>
+<p><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%203-1.png" width="288" /><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%203-2.png" width="288" /><img src="/post/2019-03-01-embeddability_files/figure-html/petersen%20family%203-3.png" width="288" /></p>
+<pre class="r"><code>par(mfrow = c(1, 1))
+# verify that G_10 is isomorphic to the Petersen graph
+stopifnot(isomorphic(g10, petersen))</code></pre>
+</div>
+</div>
+<div id="embeddings" class="section level2">
+<h2>embeddings</h2>
+<p>Recall that the point of the Petersen family (for our purposes) is to encapsulate the constraints on linkless embeddability. To highlight this, i’d like to at least hint at how these constraints work by locating linked cycles in some very basic embeddings. I’ll start with the Petersen graph, using a Fruchterman–Reingold embedding as implemented in <strong>igraph</strong>:</p>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(plotly)
+set.seed(0)
+petersen %&gt;%
+  layout_with_fr(dim = 3) %&gt;%
+  as_tibble() %&gt;%
+  setNames(c(&quot;x&quot;, &quot;y&quot;, &quot;z&quot;)) %&gt;%
+  mutate(node = 1:nrow(.)) %&gt;%
+  print() -&gt; nodes</code></pre>
+<pre><code>## Warning: `as_tibble.matrix()` requires a matrix with column names or a `.name_repair` argument. Using compatibility `.name_repair`.
+## This warning is displayed once per session.</code></pre>
+<pre><code>## # A tibble: 10 x 4
+##        x     y     z  node
+##    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt;
+##  1 10.1   17.0  17.4     1
+##  2 10.9   18.4  18.1     2
+##  3 12.0   18.2  17.6     3
+##  4 11.6   18.1  16.1     4
+##  5 10.0   17.8  16.2     5
+##  6 11.1   16.2  17.4     6
+##  7 10.8   18.6  16.9     7
+##  8 11.1   17.3  18.2     8
+##  9 11.5   17.1  16.3     9
+## 10  9.84  18.2  17.5    10</code></pre>
+<div id="coordinating-zs" class="section level3">
+<h3>coordinating z’s</h3>
+<p>Above, we produce a tibble of node coordinates. Below, we produce a tibble of link coordinates. This next chunk current complains and produces only a 2-dimensional visualization because <a href="https://github.com/ropensci/plotly/issues/1009"><code>plotly::add_segments()</code> does not yet understand z-coordinates</a>; i leave it here to return to as <strong>plotly</strong> continues to grow.</p>
+<pre class="r"><code>petersen %&gt;%
+  activate(links) %&gt;%
+  as_tibble() %&gt;%
+  left_join(nodes, by = c(&quot;from&quot; = &quot;node&quot;)) %&gt;%
+  left_join(nodes, by = c(&quot;to&quot; = &quot;node&quot;), suffix = c(&quot;_from&quot;, &quot;_to&quot;)) %&gt;%
+  print() -&gt; links</code></pre>
+<pre><code>## # A tibble: 15 x 8
+##     from    to x_from y_from z_from  x_to  y_to  z_to
+##    &lt;int&gt; &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1     1     2   10.1   17.0   17.4 10.9   18.4  18.1
+##  2     1     5   10.1   17.0   17.4 10.0   17.8  16.2
+##  3     1     6   10.1   17.0   17.4 11.1   16.2  17.4
+##  4     2     3   10.9   18.4   18.1 12.0   18.2  17.6
+##  5     2     7   10.9   18.4   18.1 10.8   18.6  16.9
+##  6     3     4   12.0   18.2   17.6 11.6   18.1  16.1
+##  7     3     8   12.0   18.2   17.6 11.1   17.3  18.2
+##  8     4     5   11.6   18.1   16.1 10.0   17.8  16.2
+##  9     4     9   11.6   18.1   16.1 11.5   17.1  16.3
+## 10     5    10   10.0   17.8   16.2  9.84  18.2  17.5
+## 11     6     8   11.1   16.2   17.4 11.1   17.3  18.2
+## 12     6     9   11.1   16.2   17.4 11.5   17.1  16.3
+## 13     7     9   10.8   18.6   16.9 11.5   17.1  16.3
+## 14     7    10   10.8   18.6   16.9  9.84  18.2  17.5
+## 15     8    10   11.1   17.3   18.2  9.84  18.2  17.5</code></pre>
+<pre class="r"><code>plot_ly(nodes, x = ~x, y = ~y, z = ~z) %&gt;%
+  add_segments(
+    data = links,
+    x = ~x_from, xend = ~x_to,
+    y = ~y_from, yend = ~y_to,
+    z = ~z_from, zend = ~z_to,
+    color = I(&quot;black&quot;)
+  )</code></pre>
+<pre><code>## Warning: &#39;scatter&#39; objects don&#39;t have these attributes: &#39;z&#39;, &#39;zend&#39;
+## Valid attributes include:
+## &#39;type&#39;, &#39;visible&#39;, &#39;showlegend&#39;, &#39;legendgroup&#39;, &#39;opacity&#39;, &#39;name&#39;, &#39;uid&#39;, &#39;ids&#39;, &#39;customdata&#39;, &#39;selectedpoints&#39;, &#39;hoverinfo&#39;, &#39;hoverlabel&#39;, &#39;stream&#39;, &#39;transforms&#39;, &#39;x&#39;, &#39;x0&#39;, &#39;dx&#39;, &#39;y&#39;, &#39;y0&#39;, &#39;dy&#39;, &#39;text&#39;, &#39;hovertext&#39;, &#39;mode&#39;, &#39;hoveron&#39;, &#39;line&#39;, &#39;connectgaps&#39;, &#39;cliponaxis&#39;, &#39;fill&#39;, &#39;fillcolor&#39;, &#39;marker&#39;, &#39;selected&#39;, &#39;unselected&#39;, &#39;textposition&#39;, &#39;textfont&#39;, &#39;r&#39;, &#39;t&#39;, &#39;error_x&#39;, &#39;error_y&#39;, &#39;xcalendar&#39;, &#39;ycalendar&#39;, &#39;xaxis&#39;, &#39;yaxis&#39;, &#39;idssrc&#39;, &#39;customdatasrc&#39;, &#39;hoverinfosrc&#39;, &#39;xsrc&#39;, &#39;ysrc&#39;, &#39;textsrc&#39;, &#39;hovertextsrc&#39;, &#39;textpositionsrc&#39;, &#39;rsrc&#39;, &#39;tsrc&#39;, &#39;key&#39;, &#39;set&#39;, &#39;frame&#39;, &#39;transforms&#39;, &#39;_isNestedKey&#39;, &#39;_isSimpleKey&#39;, &#39;_isGraticule&#39;, &#39;_bbox&#39;</code></pre>
+<div id="htmlwidget-1" style="width:288px;height:288px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"visdat":{"7f2e659ad416":["function () ","plotlyVisDat"],"7f2e17da2477":["function () ","data"]},"cur_data":"7f2e17da2477","attrs":{"7f2e17da2477":{"x":{},"y":{},"z":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"xend":{},"yend":{},"type":"scatter","mode":"lines","zend":{},"color":["black"],"inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"x_from"},"yaxis":{"domain":[0,1],"automargin":true,"title":"y_from"},"scene":{"zaxis":{"title":"z_from"}},"hovermode":"closest","showlegend":false},"source":"A","config":{"modeBarButtonsToAdd":[{"name":"Collaborate","icon":{"width":1000,"ascent":500,"descent":-50,"path":"M487 375c7-10 9-23 5-36l-79-259c-3-12-11-23-22-31-11-8-22-12-35-12l-263 0c-15 0-29 5-43 15-13 10-23 23-28 37-5 13-5 25-1 37 0 0 0 3 1 7 1 5 1 8 1 11 0 2 0 4-1 6 0 3-1 5-1 6 1 2 2 4 3 6 1 2 2 4 4 6 2 3 4 5 5 7 5 7 9 16 13 26 4 10 7 19 9 26 0 2 0 5 0 9-1 4-1 6 0 8 0 2 2 5 4 8 3 3 5 5 5 7 4 6 8 15 12 26 4 11 7 19 7 26 1 1 0 4 0 9-1 4-1 7 0 8 1 2 3 5 6 8 4 4 6 6 6 7 4 5 8 13 13 24 4 11 7 20 7 28 1 1 0 4 0 7-1 3-1 6-1 7 0 2 1 4 3 6 1 1 3 4 5 6 2 3 3 5 5 6 1 2 3 5 4 9 2 3 3 7 5 10 1 3 2 6 4 10 2 4 4 7 6 9 2 3 4 5 7 7 3 2 7 3 11 3 3 0 8 0 13-1l0-1c7 2 12 2 14 2l218 0c14 0 25-5 32-16 8-10 10-23 6-37l-79-259c-7-22-13-37-20-43-7-7-19-10-37-10l-248 0c-5 0-9-2-11-5-2-3-2-7 0-12 4-13 18-20 41-20l264 0c5 0 10 2 16 5 5 3 8 6 10 11l85 282c2 5 2 10 2 17 7-3 13-7 17-13z m-304 0c-1-3-1-5 0-7 1-1 3-2 6-2l174 0c2 0 4 1 7 2 2 2 4 4 5 7l6 18c0 3 0 5-1 7-1 1-3 2-6 2l-173 0c-3 0-5-1-8-2-2-2-4-4-4-7z m-24-73c-1-3-1-5 0-7 2-2 3-2 6-2l174 0c2 0 5 0 7 2 3 2 4 4 5 7l6 18c1 2 0 5-1 6-1 2-3 3-5 3l-174 0c-3 0-5-1-7-3-3-1-4-4-5-6z"},"click":"function(gd) { \n        // is this being viewed in RStudio?\n        if (location.search == '?viewer_pane=1') {\n          alert('To learn about plotly for collaboration, visit:\\n https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html');\n        } else {\n          window.open('https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html', '_blank');\n        }\n      }"}],"cloud":false},"data":[{"x":[10.0513873919252,10.8726494121712,null,10.0513873919252,10.0049639077167,null,10.0513873919252,11.0543369105304,null,10.8726494121712,12.0230251990042,null,10.8726494121712,10.8156611426198,null,12.0230251990042,11.6069834900545,null,12.0230251990042,11.0729244199622,null,11.6069834900545,10.0049639077167,null,11.6069834900545,11.5272175920833,null,10.0049639077167,9.83831855980565,null,11.0543369105304,11.0729244199622,null,11.0543369105304,11.5272175920833,null,10.8156611426198,11.5272175920833,null,10.8156611426198,9.83831855980565,null,11.0729244199622,9.83831855980565],"y":[17.0427905313819,18.3731661276791,null,17.0427905313819,17.8170011579443,null,17.0427905313819,16.2208063271446,null,18.3731661276791,18.1727535993232,null,18.3731661276791,18.5700642922754,null,18.1727535993232,18.1155361206087,null,18.1727535993232,17.2518870130491,null,18.1155361206087,17.8170011579443,null,18.1155361206087,17.148051656421,null,17.8170011579443,18.1668851378811,null,16.2208063271446,17.2518870130491,null,16.2208063271446,17.148051656421,null,18.5700642922754,17.148051656421,null,18.5700642922754,18.1668851378811,null,17.2518870130491,18.1668851378811],"z":[17.3910511553234,17.3910511553234,17.3910511553234,18.0650143079719,18.0650143079719,17.6342438268503,17.6342438268503,16.0721798372531,16.0721798372531,16.2318514545894,17.3658377143319,17.3658377143319,16.9286396485918,16.9286396485918,18.208613773443],"type":"scatter","mode":"lines","zend":[18.0650143079719,16.2318514545894,17.3658377143319,17.6342438268503,16.9286396485918,16.0721798372531,18.208613773443,16.2318514545894,16.3475165831642,17.4761229801153,18.208613773443,16.3475165831642,16.3475165831642,17.4761229801153,17.4761229801153],"marker":{"color":"rgba(0,0,0,1)","line":{"color":"rgba(0,0,0,1)"}},"textfont":{"color":"rgba(0,0,0,1)"},"error_y":{"color":"rgba(0,0,0,1)"},"error_x":{"color":"rgba(0,0,0,1)"},"line":{"color":"rgba(0,0,0,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"base_url":"https://plot.ly"},"evals":["config.modeBarButtonsToAdd.0.click"],"jsHooks":[]}</script>
+<p>The slightly more cumbersome solution is to organize the links as very short paths, distinguished by a grouping variable, in preparation for <code>plotly::add_paths()</code>:</p>
+<pre class="r"><code>petersen %&gt;%
+  activate(links) %&gt;%
+  as_tibble() %&gt;%
+  mutate(link = row_number()) %&gt;%
+  gather(end, node, from, to) %&gt;%
+  left_join(nodes, by = &quot;node&quot;) %&gt;%
+  group_by(link) %&gt;%
+  print() -&gt; links</code></pre>
+<pre><code>## # A tibble: 30 x 6
+## # Groups:   link [15]
+##     link end    node     x     y     z
+##    &lt;int&gt; &lt;chr&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1     1 from      1  10.1  17.0  17.4
+##  2     2 from      1  10.1  17.0  17.4
+##  3     3 from      1  10.1  17.0  17.4
+##  4     4 from      2  10.9  18.4  18.1
+##  5     5 from      2  10.9  18.4  18.1
+##  6     6 from      3  12.0  18.2  17.6
+##  7     7 from      3  12.0  18.2  17.6
+##  8     8 from      4  11.6  18.1  16.1
+##  9     9 from      4  11.6  18.1  16.1
+## 10    10 from      5  10.0  17.8  16.2
+## # … with 20 more rows</code></pre>
+<pre class="r"><code>pl &lt;- plot_ly(nodes, x = ~x, y = ~y, z = ~z)
+pl &lt;- add_paths(pl, data = links, x = ~x, y = ~y, z = ~z, color = I(&quot;black&quot;))
+pl</code></pre>
+<div id="htmlwidget-2" style="width:384px;height:384px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"visdat":{"7f2e3053bc81":["function () ","plotlyVisDat"],"7f2e497cd1f0":["function () ","data"]},"cur_data":"7f2e497cd1f0","attrs":{"7f2e497cd1f0":{"x":{},"y":{},"z":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter3d","mode":"lines","color":["black"],"inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"scene":{"xaxis":{"title":"x"},"yaxis":{"title":"y"},"zaxis":{"title":"z"}},"hovermode":"closest","showlegend":false},"source":"A","config":{"modeBarButtonsToAdd":[{"name":"Collaborate","icon":{"width":1000,"ascent":500,"descent":-50,"path":"M487 375c7-10 9-23 5-36l-79-259c-3-12-11-23-22-31-11-8-22-12-35-12l-263 0c-15 0-29 5-43 15-13 10-23 23-28 37-5 13-5 25-1 37 0 0 0 3 1 7 1 5 1 8 1 11 0 2 0 4-1 6 0 3-1 5-1 6 1 2 2 4 3 6 1 2 2 4 4 6 2 3 4 5 5 7 5 7 9 16 13 26 4 10 7 19 9 26 0 2 0 5 0 9-1 4-1 6 0 8 0 2 2 5 4 8 3 3 5 5 5 7 4 6 8 15 12 26 4 11 7 19 7 26 1 1 0 4 0 9-1 4-1 7 0 8 1 2 3 5 6 8 4 4 6 6 6 7 4 5 8 13 13 24 4 11 7 20 7 28 1 1 0 4 0 7-1 3-1 6-1 7 0 2 1 4 3 6 1 1 3 4 5 6 2 3 3 5 5 6 1 2 3 5 4 9 2 3 3 7 5 10 1 3 2 6 4 10 2 4 4 7 6 9 2 3 4 5 7 7 3 2 7 3 11 3 3 0 8 0 13-1l0-1c7 2 12 2 14 2l218 0c14 0 25-5 32-16 8-10 10-23 6-37l-79-259c-7-22-13-37-20-43-7-7-19-10-37-10l-248 0c-5 0-9-2-11-5-2-3-2-7 0-12 4-13 18-20 41-20l264 0c5 0 10 2 16 5 5 3 8 6 10 11l85 282c2 5 2 10 2 17 7-3 13-7 17-13z m-304 0c-1-3-1-5 0-7 1-1 3-2 6-2l174 0c2 0 4 1 7 2 2 2 4 4 5 7l6 18c0 3 0 5-1 7-1 1-3 2-6 2l-173 0c-3 0-5-1-8-2-2-2-4-4-4-7z m-24-73c-1-3-1-5 0-7 2-2 3-2 6-2l174 0c2 0 5 0 7 2 3 2 4 4 5 7l6 18c1 2 0 5-1 6-1 2-3 3-5 3l-174 0c-3 0-5-1-7-3-3-1-4-4-5-6z"},"click":"function(gd) { \n        // is this being viewed in RStudio?\n        if (location.search == '?viewer_pane=1') {\n          alert('To learn about plotly for collaboration, visit:\\n https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html');\n        } else {\n          window.open('https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html', '_blank');\n        }\n      }"}],"cloud":false},"data":[{"x":[10.0513873919252,10.8726494121712,null,10.0513873919252,10.0049639077167,null,10.0513873919252,11.0543369105304,null,10.8726494121712,12.0230251990042,null,10.8726494121712,10.8156611426198,null,12.0230251990042,11.6069834900545,null,12.0230251990042,11.0729244199622,null,11.6069834900545,10.0049639077167,null,11.6069834900545,11.5272175920833,null,10.0049639077167,9.83831855980565,null,11.0543369105304,11.0729244199622,null,11.0543369105304,11.5272175920833,null,10.8156611426198,11.5272175920833,null,10.8156611426198,9.83831855980565,null,11.0729244199622,9.83831855980565],"y":[17.0427905313819,18.3731661276791,null,17.0427905313819,17.8170011579443,null,17.0427905313819,16.2208063271446,null,18.3731661276791,18.1727535993232,null,18.3731661276791,18.5700642922754,null,18.1727535993232,18.1155361206087,null,18.1727535993232,17.2518870130491,null,18.1155361206087,17.8170011579443,null,18.1155361206087,17.148051656421,null,17.8170011579443,18.1668851378811,null,16.2208063271446,17.2518870130491,null,16.2208063271446,17.148051656421,null,18.5700642922754,17.148051656421,null,18.5700642922754,18.1668851378811,null,17.2518870130491,18.1668851378811],"z":[17.3910511553234,18.0650143079719,null,17.3910511553234,16.2318514545894,null,17.3910511553234,17.3658377143319,null,18.0650143079719,17.6342438268503,null,18.0650143079719,16.9286396485918,null,17.6342438268503,16.0721798372531,null,17.6342438268503,18.208613773443,null,16.0721798372531,16.2318514545894,null,16.0721798372531,16.3475165831642,null,16.2318514545894,17.4761229801153,null,17.3658377143319,18.208613773443,null,17.3658377143319,16.3475165831642,null,16.9286396485918,16.3475165831642,null,16.9286396485918,17.4761229801153,null,18.208613773443,17.4761229801153],"type":"scatter3d","mode":"lines","marker":{"color":"rgba(0,0,0,1)","line":{"color":"rgba(0,0,0,1)"}},"textfont":{"color":"rgba(0,0,0,1)"},"error_y":{"color":"rgba(0,0,0,1)"},"error_x":{"color":"rgba(0,0,0,1)"},"line":{"color":"rgba(0,0,0,1)"},"frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"base_url":"https://plot.ly"},"evals":["config.modeBarButtonsToAdd.0.click"],"jsHooks":[]}</script>
+</div>
+<div id="linking-cycles" class="section level3">
+<h3>linking cycles</h3>
+<p>Finally, a lucky guess hit upon two linked cycles in the above embedding, highlighted <code>"firebrick"</code> and <code>"forestgreen"</code> in the following 3-dimensional plot:</p>
+<pre class="r"><code>cycle1 &lt;- 1:5
+cycle2 &lt;- c(6, 8, 10, 7, 9)
+cycle1 %&gt;%
+  {get.edge.ids(petersen, rbind(., .[c(2:5, 1)]))} %&gt;%
+  tibble::enframe(name = NULL, value = &quot;link&quot;) %&gt;%
+  inner_join(links, by = &quot;link&quot;) -&gt;
+  cycle1
+cycle2 %&gt;%
+  {get.edge.ids(petersen, rbind(., .[c(2:length(.), 1)]))} %&gt;%
+  tibble::enframe(name = NULL, value = &quot;link&quot;) %&gt;%
+  inner_join(links, by = &quot;link&quot;) -&gt; cycle2
+pl %&gt;%
+  add_paths(data = cycle1, x = ~x, y = ~y, z = ~z, color = I(&quot;firebrick&quot;)) %&gt;%
+  add_paths(data = cycle2, x = ~x, y = ~y, z = ~z, color = I(&quot;forestgreen&quot;)) %&gt;%
+  layout(showlegend = FALSE)</code></pre>
+<div id="htmlwidget-3" style="width:384px;height:384px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-3">{"x":{"visdat":{"7f2e3053bc81":["function () ","plotlyVisDat"],"7f2e497cd1f0":["function () ","data"],"7f2e218c068b":["function () ","data"],"7f2e7001a0e1":["function () ","data"]},"cur_data":"7f2e7001a0e1","attrs":{"7f2e497cd1f0":{"x":{},"y":{},"z":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter3d","mode":"lines","color":["black"],"inherit":true},"7f2e218c068b":{"x":{},"y":{},"z":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter3d","mode":"lines","color":["firebrick"],"inherit":true},"7f2e7001a0e1":{"x":{},"y":{},"z":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter3d","mode":"lines","color":["forestgreen"],"inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"showlegend":false,"scene":{"xaxis":{"title":"x"},"yaxis":{"title":"y"},"zaxis":{"title":"z"}},"hovermode":"closest"},"source":"A","config":{"modeBarButtonsToAdd":[{"name":"Collaborate","icon":{"width":1000,"ascent":500,"descent":-50,"path":"M487 375c7-10 9-23 5-36l-79-259c-3-12-11-23-22-31-11-8-22-12-35-12l-263 0c-15 0-29 5-43 15-13 10-23 23-28 37-5 13-5 25-1 37 0 0 0 3 1 7 1 5 1 8 1 11 0 2 0 4-1 6 0 3-1 5-1 6 1 2 2 4 3 6 1 2 2 4 4 6 2 3 4 5 5 7 5 7 9 16 13 26 4 10 7 19 9 26 0 2 0 5 0 9-1 4-1 6 0 8 0 2 2 5 4 8 3 3 5 5 5 7 4 6 8 15 12 26 4 11 7 19 7 26 1 1 0 4 0 9-1 4-1 7 0 8 1 2 3 5 6 8 4 4 6 6 6 7 4 5 8 13 13 24 4 11 7 20 7 28 1 1 0 4 0 7-1 3-1 6-1 7 0 2 1 4 3 6 1 1 3 4 5 6 2 3 3 5 5 6 1 2 3 5 4 9 2 3 3 7 5 10 1 3 2 6 4 10 2 4 4 7 6 9 2 3 4 5 7 7 3 2 7 3 11 3 3 0 8 0 13-1l0-1c7 2 12 2 14 2l218 0c14 0 25-5 32-16 8-10 10-23 6-37l-79-259c-7-22-13-37-20-43-7-7-19-10-37-10l-248 0c-5 0-9-2-11-5-2-3-2-7 0-12 4-13 18-20 41-20l264 0c5 0 10 2 16 5 5 3 8 6 10 11l85 282c2 5 2 10 2 17 7-3 13-7 17-13z m-304 0c-1-3-1-5 0-7 1-1 3-2 6-2l174 0c2 0 4 1 7 2 2 2 4 4 5 7l6 18c0 3 0 5-1 7-1 1-3 2-6 2l-173 0c-3 0-5-1-8-2-2-2-4-4-4-7z m-24-73c-1-3-1-5 0-7 2-2 3-2 6-2l174 0c2 0 5 0 7 2 3 2 4 4 5 7l6 18c1 2 0 5-1 6-1 2-3 3-5 3l-174 0c-3 0-5-1-7-3-3-1-4-4-5-6z"},"click":"function(gd) { \n        // is this being viewed in RStudio?\n        if (location.search == '?viewer_pane=1') {\n          alert('To learn about plotly for collaboration, visit:\\n https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html');\n        } else {\n          window.open('https://cpsievert.github.io/plotly_book/plot-ly-for-collaboration.html', '_blank');\n        }\n      }"}],"cloud":false},"data":[{"x":[10.0513873919252,10.8726494121712,null,10.0513873919252,10.0049639077167,null,10.0513873919252,11.0543369105304,null,10.8726494121712,12.0230251990042,null,10.8726494121712,10.8156611426198,null,12.0230251990042,11.6069834900545,null,12.0230251990042,11.0729244199622,null,11.6069834900545,10.0049639077167,null,11.6069834900545,11.5272175920833,null,10.0049639077167,9.83831855980565,null,11.0543369105304,11.0729244199622,null,11.0543369105304,11.5272175920833,null,10.8156611426198,11.5272175920833,null,10.8156611426198,9.83831855980565,null,11.0729244199622,9.83831855980565],"y":[17.0427905313819,18.3731661276791,null,17.0427905313819,17.8170011579443,null,17.0427905313819,16.2208063271446,null,18.3731661276791,18.1727535993232,null,18.3731661276791,18.5700642922754,null,18.1727535993232,18.1155361206087,null,18.1727535993232,17.2518870130491,null,18.1155361206087,17.8170011579443,null,18.1155361206087,17.148051656421,null,17.8170011579443,18.1668851378811,null,16.2208063271446,17.2518870130491,null,16.2208063271446,17.148051656421,null,18.5700642922754,17.148051656421,null,18.5700642922754,18.1668851378811,null,17.2518870130491,18.1668851378811],"z":[17.3910511553234,18.0650143079719,null,17.3910511553234,16.2318514545894,null,17.3910511553234,17.3658377143319,null,18.0650143079719,17.6342438268503,null,18.0650143079719,16.9286396485918,null,17.6342438268503,16.0721798372531,null,17.6342438268503,18.208613773443,null,16.0721798372531,16.2318514545894,null,16.0721798372531,16.3475165831642,null,16.2318514545894,17.4761229801153,null,17.3658377143319,18.208613773443,null,17.3658377143319,16.3475165831642,null,16.9286396485918,16.3475165831642,null,16.9286396485918,17.4761229801153,null,18.208613773443,17.4761229801153],"type":"scatter3d","mode":"lines","marker":{"color":"rgba(0,0,0,1)","line":{"color":"rgba(0,0,0,1)"}},"textfont":{"color":"rgba(0,0,0,1)"},"error_y":{"color":"rgba(0,0,0,1)"},"error_x":{"color":"rgba(0,0,0,1)"},"line":{"color":"rgba(0,0,0,1)"},"frame":null},{"x":[10.0513873919252,10.8726494121712,10.8726494121712,12.0230251990042,12.0230251990042,11.6069834900545,11.6069834900545,10.0049639077167,10.0513873919252,10.0049639077167],"y":[17.0427905313819,18.3731661276791,18.3731661276791,18.1727535993232,18.1727535993232,18.1155361206087,18.1155361206087,17.8170011579443,17.0427905313819,17.8170011579443],"z":[17.3910511553234,18.0650143079719,18.0650143079719,17.6342438268503,17.6342438268503,16.0721798372531,16.0721798372531,16.2318514545894,17.3910511553234,16.2318514545894],"type":"scatter3d","mode":"lines","marker":{"color":"rgba(178,34,34,1)","line":{"color":"rgba(178,34,34,1)"}},"textfont":{"color":"rgba(178,34,34,1)"},"error_y":{"color":"rgba(178,34,34,1)"},"error_x":{"color":"rgba(178,34,34,1)"},"line":{"color":"rgba(178,34,34,1)"},"frame":null},{"x":[11.0543369105304,11.0729244199622,11.0729244199622,9.83831855980565,10.8156611426198,9.83831855980565,10.8156611426198,11.5272175920833,11.0543369105304,11.5272175920833],"y":[16.2208063271446,17.2518870130491,17.2518870130491,18.1668851378811,18.5700642922754,18.1668851378811,18.5700642922754,17.148051656421,16.2208063271446,17.148051656421],"z":[17.3658377143319,18.208613773443,18.208613773443,17.4761229801153,16.9286396485918,17.4761229801153,16.9286396485918,16.3475165831642,17.3658377143319,16.3475165831642],"type":"scatter3d","mode":"lines","marker":{"color":"rgba(34,139,34,1)","line":{"color":"rgba(34,139,34,1)"}},"textfont":{"color":"rgba(34,139,34,1)"},"error_y":{"color":"rgba(34,139,34,1)"},"error_x":{"color":"rgba(34,139,34,1)"},"line":{"color":"rgba(34,139,34,1)"},"frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"base_url":"https://plot.ly"},"evals":["config.modeBarButtonsToAdd.0.click"],"jsHooks":[]}</script>
+<p>I’m happy to rest here, having figured out how to perform the famous embeddability-preserving operations and to render 3-dimensional graphics using <strong>plotly</strong> — which is about to become important as we prepare to present our anatomical analysis. If you take some further steps on your own, i’d be glad to hear about it!</p>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>I’m being carefully vague here while referring to possibly unpublished work.<a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn2"><p>I’m thinking here of consolidation as the mathematical analog of Mendeleev’s periodic table, which introduced a useful conceptual schema that was ultimately validated not by its elegance alone but by the brand new elements (pun) it implied For one of the best stories of consolodationist success in mathematics, read <a href="http://math.ucr.edu/home/baez/octonions/node1.html">Baez’s popular chapter about the discoveries of the quarternions and the octonions</a> leading up to the general Cayley–Dickson construction. A more recent example i’ve come to love is <a href="https://www.ams.org/journals/ecgd/2015-19-13/S1088-4173-2015-00287-8/">the modulus-based family of distance measures by Albin, Brunner, Perez, Poggi-Corradini, and Wiens</a> that interpolate continuously between shortest path length and min flow–max cut distance.<a href="#fnref2" class="footnote-back">↩</a></p></li>
+<li id="fn3"><p>I might call this graph “series–complete” on the ordered partition <span class="math inline">\((1,3,3,1)\)</span>, since the links are precisely the pairs of nodes in adjacent subsets. Probably graph theorists have a term for this.<a href="#fnref3" class="footnote-back">↩</a></p></li>
+</ol>
+</div>
