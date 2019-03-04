@@ -2,6 +2,7 @@ theme = "nofancy"
 baseURL = "http://corybrunson.github.io/"
 languageCode = "en-us"
 title = "murmuring in the background"
+rssLimit = 6
 
 [permalinks]
   post = "/:year/:month/:day/:slug/"
