@@ -43,18 +43,18 @@ tibble(theta = runif(120, 0, 2*pi)) %&gt;%
 ## list(name = ~f(.))
 ## This warning is displayed once per session.</code></pre>
 <pre><code>## # A tibble: 120 x 3
-##    theta       x       y
-##    &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
-##  1  4.26 -0.414  -0.959 
-##  2  4.63 -0.249  -1.00  
-##  3  4.73  0.0145 -1.22  
-##  4  3.64 -1.03   -0.459 
-##  5  2.47 -0.806   0.549 
-##  6  3.15 -1.01    0.0448
-##  7  6.06  1.10   -0.193 
-##  8  6.17  0.862  -0.0843
-##  9  1.82 -0.0993  1.10  
-## 10  5.85  0.999  -0.560 
+##    theta      x       y
+##    &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
+##  1 2.92  -1.13   0.228 
+##  2 0.981  0.578  0.863 
+##  3 4.10  -0.459 -0.847 
+##  4 6.21   1.03   0.0502
+##  5 2.70  -0.667  0.697 
+##  6 4.24  -0.460 -0.701 
+##  7 5.37   0.508 -0.912 
+##  8 6.17   0.857 -0.284 
+##  9 1.86  -0.256  0.965 
+## 10 4.41  -0.309 -0.946 
 ## # … with 110 more rows</code></pre>
 <p><img src="/post/2019-02-01-sampling_files/figure-html/circle%20sample-1.png" width="672" /></p>
 <p>The underlying sampling protocol is, to my understanding, typical:<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a></p>
@@ -95,18 +95,18 @@ tibble(theta = runif(360, 0, 2*pi), phi = runif(360, 0, 2*pi)) %&gt;%
   print() %&gt;%
   pairs(asp = 1, pch = 19, cex = .5, col = &quot;#00000077&quot;)</code></pre>
 <pre><code>## # A tibble: 360 x 4
-##           w        x        y       z
-##       &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;
-##  1 -0.384   -0.310    0.185   -0.521 
-##  2 -0.660   -1.00     0.343   -0.637 
-##  3 -1.12     0.128    0.0417   0.737 
-##  4 -0.00262 -0.253   -0.0489   0.0495
-##  5  0.525   -0.172    0.594   -0.0949
-##  6 -0.843   -1.53     0.00959 -0.0162
-##  7 -1.17    -0.00883 -0.00276  0.731 
-##  8  1.51    -0.407   -0.495    0.0657
-##  9 -0.810   -1.05    -0.298    0.606 
-## 10  0.196    0.983   -0.580   -0.476 
+##         w       x       y       z
+##     &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
+##  1  0.993 -0.0418  0.750  -0.0158
+##  2  1.00   0.0433  0.750   0.0162
+##  3 -0.234  1.17    0.460   0.561 
+##  4 -1.13   1.32   -0.0448 -0.0972
+##  5  1.70   0.297  -0.174  -0.0151
+##  6  1.40   0.261  -0.618  -0.0572
+##  7 -0.149  0.909  -0.483  -0.568 
+##  8 -0.521 -0.335   0.182  -0.620 
+##  9 -0.172  0.182   0.0106  0.0246
+## 10  1.17   1.24   -0.227  -0.0980
 ## # … with 350 more rows</code></pre>
 <p><img src="/post/2019-02-01-sampling_files/figure-html/sample%20klein%20bottle%20uniformly%20from%20parameter%20space-1.png" width="672" /></p>
 <p>The features of the manifold are recognizable: The projection onto <span class="math inline">\(w\)</span> and <span class="math inline">\(x\)</span> is like that of a torus, while complementary “pinches” are discernible in the <span class="math inline">\(y\)</span> and <span class="math inline">\(z\)</span> directions with respect to <span class="math inline">\(w\)</span>. However, it’s also clear that more points have been sampled toward the center of the shape, where the parameterization “moves” most slowly, while fewer have been sampled toward the periphery.
@@ -221,18 +221,18 @@ sample_klein &lt;- function(n, r) {
   print() %&gt;%
   pairs(asp = 1, pch = 19, cex = .5, col = &quot;#00000077&quot;)</code></pre>
 <pre><code>## # A tibble: 360 x 4
-##          w      x       y        z
-##      &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
-##  1 -0.850  -0.973  0.286  -0.629  
-##  2  0.995  -1.27  -0.390   0.190  
-##  3  0.845   0.281 -0.732  -0.118  
-##  4  1.21   -1.27   0.0166 -0.00712
-##  5 -0.0155 -1.65  -0.266   0.268  
-##  6  0.542   1.65   0.104   0.0757 
-##  7  1.12   -1.04  -0.497   0.195  
-##  8  1.62   -0.607 -0.184   0.0334 
-##  9 -1.08    1.31  -0.118  -0.249  
-## 10  0.895   1.46  -0.203  -0.114  
+##          w       x       y        z
+##      &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+##  1 -1.59    0.0887  0.0130  0.465  
+##  2  1.73   -0.174  -0.123   0.00615
+##  3  0.147   1.58   -0.349  -0.318  
+##  4 -0.422   0.837  -0.392  -0.636  
+##  5 -0.0617 -0.584   0.419  -0.466  
+##  6 -0.331  -1.63   -0.222   0.272  
+##  7 -0.0570 -1.45    0.414  -0.430  
+##  8 -0.200  -0.240   0.127  -0.271  
+##  9  0.565   0.239  -0.630  -0.128  
+## 10 -0.236   0.542   0.345   0.526  
 ## # … with 350 more rows</code></pre>
 <p><img src="/post/2019-02-01-sampling_files/figure-html/sample%20klein%20bottle%20uniformly%20within%20ambient%20space-1.png" width="672" /></p>
 <p>The differences are minor in most of the coordinate scatterplots, but the concentration of points near the center of the <span class="math inline">\(w,x\)</span>-projection is clearly less than before, and not discernibly different at this “inner” region of the surface than at the “outer” regions.</p>

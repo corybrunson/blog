@@ -1,14 +1,15 @@
 ---
 draft: false
-date: 2019-01-27
+date: 2019-03-04
 title: About
 ---
 
 ## who i am (here)
 
-I'm Cory Brunson<sup>he/him/his</sup>, and this is a lightweight space for me to practice expressing my outlook on matters at least peripherally professional. I completed a PhD in mathematics in 2013, and i'm now a postdoctoral fellow and trainee doing network analysis, data science, and health informatics. I'm an enthusiast for the extended [**tidyverse**](https://www.tidyverse.org/) library, and i'm exploring new techniques and applications of [topological data analysis](https://arxiv.org/abs/1710.04019).
+I'm Cory Brunson<sup>he/him/his</sup>, and this is a lightweight space for me to practice expressing my outlook on matters at least peripherally professional. I completed a PhD in mathematics in 2013, and i'm now a postdoctoral fellow training myself in network analysis, data science, and health informatics. I'm an enthusiast for the extended [tidyverse](https://www.tidyverse.org/) library, and i'm exploring new techniques and applications of [topological data analysis](https://arxiv.org/abs/1710.04019).
 
-Very soon i'll have a [`hugo-academic`](https://github.com/gcushen/hugo-academic) professional website (it's forcing me to finally upgrade from Mavericks). In the meantime, you can find me at the [Center for Quantitative Medicine](https://health.uconn.edu/quantitative-medicine/) or at the links in the footer.[^nofancy]
+My under-developed [professional website](https://jasoncorybrunson.netlify.com/) uses the highly-developed [`hugo-academic`](https://github.com/gcushen/hugo-academic) theme.
+You can also find me at the [Center for Quantitative Medicine](https://health.uconn.edu/quantitative-medicine/) or at the links in the footer.[^nofancy]
 
 [^nofancy]: Thanks to Zack Guo for the [`nofancy` Hugo theme](https://github.com/gizak/nofancy).
 
