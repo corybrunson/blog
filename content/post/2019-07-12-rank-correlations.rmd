@@ -1,0 +1,15 @@
+---
+draft: true
+title: 
+author: ~
+date: 2019-06-12
+categories: [progress,methodology]
+tags: [correlation,rank,eigendecomposition,biplot]
+---
+
+```{r knitr options, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.height = 3, fig.width = 3
+)
+```

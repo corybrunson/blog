@@ -111,7 +111,7 @@ tibble(t = runif(120, -2, 2)) %>%
 Notice the sparsity of points near \((-1,0)\) and \((1,0)\). This is because, as \(x(t)\) moves steadily away from these endpoints, \(y(t)\) bolts away from them; so that the Euclidean distance \(\sqrt{x^2+y^2}\) between \(g(t_0)\) and \(g(t_1)\) is larger when \(t_0\) and \(t_1\) are closer to these endpoints than when they are closer to \((0,1)\) or \((0,-1)\).
 This is the sort of problem we want to be sure to avoid when sampling from the embedded Klein bottle.
 
-## reforming a deformed sampler
+### reforming a deformed sampler
 
 My solution comes from [a very cool paper titled "Sampling from a Manifold"](https://projecteuclid.org/euclid.imsc/1379942050), by mathematicians Persi Diaconis and Mehrdad Shahshahani and statistician Susan Holmes.
 I don't remember how i first came across this paper, but i found it simultaneously exciting and exhausting to read --- excited by the prospect of using basic calculus and computational trickery to generate uniform manifold samples, exhausted by the way rigorous details were either compactified or outsourced. This post was ultimately motivated by a desire, for my own future benefit at least, to have a thoroughly documented application of their method available for reference.
