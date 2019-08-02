@@ -1,8 +1,9 @@
 ---
-draft: true
-title: "struggling to discriminate"
+draft: false
+title: I AM THE DISCRIMINANT
 author: ~
 date: 2019-08-02
+slug: lda
 categories: [methodology]
 tags: [ordination,biplot,linear discriminant analysis]
 ---
@@ -14,16 +15,22 @@ knitr::opts_chunk$set(
 )
 ```
 
-For over a year (intermittent, not cumulative) i've been developing an R package, [ordr](https://github.com/corybrunson/ordr), for incorporating ordination techniques into a tidyverse workflow. (Credit where it's due: Emily Paul, a summer intern from Avon High School, helped extend the package functionality and has since used it in other projects and provided critical feedback on its design.) This week, i finally deployed [a pkgdown website](https://corybrunson.github.io/ordr/) and tweeted a meek solicitation for feedback.[^feedback] Interestingly, the one component that held be back, that i put off time after time before finally grinding out a solution over the past few weeks, was the component that originally complemented PCA in [Vince Vu's original inspiring ggbiplot package](https://github.com/vqv/ggbiplot): The MASS package implementation of linear discriminant analysis.
+For over a year (intermittently, not cumulatively) i've been developing an R package, [ordr](https://github.com/corybrunson/ordr), for incorporating ordination techniques into a tidyverse workflow. (Credit where it's due: Emily Paul, a summer intern from Avon High School, helped extend the package functionality and has since used it in other projects and provided critical feedback on its design.) This week, i finally deployed [a pkgdown website](https://corybrunson.github.io/ordr/) and tweeted a meek solicitation for feedback.[^feedback] Interestingly, the one component that held me back, that i put off time and time again before finally grinding out a solution over the past few weeks, was the component that originally complemented PCA in [Vince Vu's original and inspirational ggbiplot package](https://github.com/vqv/ggbiplot): Accessor methods for the MASS package implementation of linear discriminant analysis.
 
 [^feedback]: If you use ordination and ggplot2, not necessarily together (yet), i'd be grateful for your feedback, too!
 
-A big part of the reason is that [the source code of `MASS::lda()`](https://github.com/cran/MASS/blob/master/R/lda.R) looks nothing like the tidy definition of LDA found in textbooks. (I have on my shelf my mom's copies of [Tatsuoka's _Multivariate Analysis_](https://books.google.com/books/about/Multivariate_Analysis.html?id=HHNnBDaNsuUC) and of [Nunnally's _Psychometric Theory_](https://books.google.com/books/about/Psychometric_theory.html?id=WE59AAAAMAAJ), but there are several similar introductions online, for example [Raschka's](https://sebastianraschka.com/Articles/2014_python_lda.html).) In the standard presentation, LDA amounts to an eigendecomposition of the quotient ${C_W}^{-1}C_B$ of the between- by the within-group covariance matrices. (This is equivalent, up to a scale factor, to the eigendecomposition of the same quotient of the corresponding scatter matrices $S_\bullet=nC_\bullet$, assuming the covariances were calculated from a population rather than a sample perspective.)
-But `MASS::lda()` not only makes no use of `eigen()`; presumably for the sake of efficiency, it relies on an alternating sequence of redefinitions of a transformed data set and a scaling matrix, and the resulting braid is difficult to follow by reading the (minimally documented) code.
+A big part of the reason for this procrastination was that [the source code of `MASS::lda()`](https://github.com/cran/MASS/blob/master/R/lda.R) looks nothing like the tidy definition of LDA found in textbooks. (I have on my shelf my mom's copies of [Tatsuoka's _Multivariate Analysis_](https://books.google.com/books/about/Multivariate_Analysis.html?id=HHNnBDaNsuUC) and of [Nunnally's _Psychometric Theory_](https://books.google.com/books/about/Psychometric_theory.html?id=WE59AAAAMAAJ), but there are several similar introductions online, for example [Raschka's](https://sebastianraschka.com/Articles/2014_python_lda.html).) In the standard presentation, LDA boils down to an eigendecomposition of the quotient ${C_W}^{-1}C_B$ of the between- by the within-group covariance matrices. (This is equivalent, up to a scale factor, to the eigendecomposition of the same quotient of the corresponding scatter matrices $S_\bullet=nC_\bullet$.[^sample])
+But rather than build up to a single eigendecomposition, `MASS::lda()` relies on sequential compositions of a scaling matrix with eigenvector and other matrices that are difficult to follow by reading the (minimally documented) code.
+
+[^sample]: My exposition here assumes the covariances were calculated from a population rather than a sample perspective, but this introduces discrepancies in a few places.
 
 Meanwhile, several discussions of LDA on StackOverflow provide useful insights into the output of `MASS::lda()`, but the more prolific respondents tend not to use R, and the numerical examples derive from implementations in other languages.
 The MASS book, _Modern Applied Statistics with S_ by Venables and Ripley ([PDF](https://tinyurl.com/yyhpyu2d)), details their mathematical formula in section 12.1 but does not discuss their implementation.
 So, while it's still fresh in my mind, i want to offer what i hope will be an evergreen dissection of `MASS::lda()`. In a future post i'll survey different ways an LDA might be summarized in a biplot and how i tweaked Venables and Ripley's function to make these options available in ordr.
+
+### tl;dr
+
+`MASS::lda()` gradually and conditionally composes a variable transformation (a matrix that acts on the columns of the data matrix) to simplify the covariance quotient, then uses singular value decomposition to obtain its eigendecomposition. Rather than returning both the variable transformation and the quotient eigendecomposition, it returns their product, a matrix of discriminant coefficients that transforms the data and/or group centroids to their discriminant coordinates (scores). Consequently, the variable loadings cannot be recovered from the output.
 
 ### class methods
 
@@ -33,15 +40,15 @@ For those (like me until recently) unfamiliar with [the S3 object system](http:/
 
 ### example inputs and parameter settings
 
-The code will be executed in sequence, punctuated by printouts of key objects defined along the way. This requires assigning values to the function arguments. I'll take as my example the famous diabetes data originally analyzed by [Reaven and Miller (1979)](https://link.springer.com/article/10.1007/BF00423145), available from the heplots package, which consists of a BMI-type measure and the results of four glucose and insulin tests for 145 patients, along with their diagnostic grouping as non-diabetic ("normal"), subclinically ("chemical") diabetic, and overtly diabetic. For our purposes, the only other required parameter is `tol`, the tolerance at which small values encountered along the matrix algebra are interpreted as zero.
+The code will be executed in sequence, punctuated by printouts and plots of key objects defined along the way. This requires assigning illustrative values to the function arguments. I'll take as my example the famous diabetes data originally analyzed by [Reaven and Miller (1979)](https://link.springer.com/article/10.1007/BF00423145), available from [the heplots package](https://github.com/friendly/heplots), which consists of a BMI-type measure and the results of four glucose and insulin tests for 145 patients, along with their diagnostic grouping as non-diabetic ("normal"), subclinically ("chemical") diabetic, and overtly diabetic.[^types] For our purposes, the only other required parameter is `tol`, the tolerance at which small values encountered along the matrix algebra are interpreted as zero.
+
+[^types]: I've been searching for a history of the 1970s change from categorizing diabetes as "clinical" versus "overt" to the present-day categories of "type 1" and "type 2". Recommended reading is very welcome.
 
 ```{r}
 x <- heplots::Diabetes[, 1:5]
 grouping <- heplots::Diabetes[, 6]
 tol <- 1e-04
 ```
-
-As a recurring illustration, the code chunk below plots steady state plasma glucose against test plasma glucose (the fifth versus the third column) across the patients in the sample, using a fixed aspect ratio.
 
 ```{r}
 set.seed(2)
@@ -52,9 +59,9 @@ print(grouping[s])
 
 ### data parameters and summary information
 
-The first several lines of `lda.default()` capture summary information about the data table `x` (and ensure that it is a matrix) and the group assignments `grouping`: `n` is the number of cases in `x`, `p` is the number of variables, `g` is `grouping` coerced to a factor vector, `lev` is a vector of groups, `counts` is a vector of the number of cases assigned to each group, `proportions` is a vector of their proportions of `n`, and `ng` is the number of groups.
+The first several lines of `lda.default()` capture summary information about the data table `x` (and ensure that it is a matrix) and the group assignments `grouping`: `n` is the number of cases in `x`, `p` is the number of variables, `g` is `grouping` coerced to a factor-valued vector, `lev` is the vector of factor levels (groups), `counts` is a vector of the number of cases assigned to each group, `proportions` is a vector of their proportions of `n`, and `ng` is the number of groups.
 
-It will help to keep track of some mathematical notation for these concepts in parallel: Call the data matrix $X\in\mathbb{R}^{n\times p}$, the column vector of group assignments $g\in\mathbb{R}^{n}$, and a diagonal matrix $N\in\mathbb{N}^{q\times q}$ of group counts $n_1,\ldots,n_q$. Note that `lev` and `ng` correspond to $c$ and $q$, respectively. Additionally let $G=(\delta_{g_i,k})\in\{0,1\}^{n\times q}$ denote the 0,1-matrix with $i,k$-th entry $1$ when case $i$ is assigned to group $k$. (I'll use the indices $1\leq i\leq n$ for the cases, $1\leq j\leq p$ for the variables, and $1\leq k\leq q$ for the groups.)
+It will help to keep track of some mathematical notation for these concepts in parallel: Call the data matrix $X\in\mathbb{R}^{n\times p}$, the column vector of group assignments $g\in[q]^{n}$, and a diagonal matrix $N\in\mathbb{N}^{q\times q}$ of group counts $n_1,\ldots,n_q$. Note that `lev` and `ng` correspond to $[q]$ and $q$, respectively. Additionally let $G=(\delta_{g_i,k})\in\{0,1\}^{n\times q}$ denote the 0,1-matrix with $i,k$-th entry $1$ when case $i$ is assigned to group $k$. (I'll use the indices $1\leq i\leq n$ for the cases, $1\leq j\leq p$ for the variables, and $1\leq k\leq q$ for the groups.)
 
 ```{r}
 if(is.null(dim(x))) stop("'x' is not a matrix")
@@ -68,7 +75,7 @@ if(n != length(grouping))
 g <- as.factor(grouping)
 lev <- lev1 <- levels(g)
 counts <- as.vector(table(g))
-# <handle `prior`>
+# excised handling of `prior`
 if(any(counts == 0L)) {
   empty <- lev[counts == 0L]
   warning(sprintf(ngettext(length(empty),
@@ -84,7 +91,7 @@ ng <- length(proportions)
 names(counts) <- lev1 # `names(prior)` excised
 ```
 
-The steps are straightforward, with the exception of the handling of prior probabilities (`prior`), which is beyond our scope and which i've excised from the code. (When not provided, `prior` takes the default value `proportions`, which are explicitly defined within `lda.default()`.) If `grouping` is a factor that is missing elements of any of its levels, then these elements are removed from the analysis with a warning. I'll also skip the lines relevant only to cross-validation (`CV = TRUE`), which include a compatibility check here and a large conditional chunk later on.
+The steps are straightforward, with the exception of the handling of prior probabilities (`prior`), which is beyond our scope and which i've excised from the code. (When not provided, `prior` takes the default value `proportions`, which are explicitly defined within `lda.default()` and will be substituted for `prior` below.) If `grouping` is a factor that is missing elements of any of its levels, then these elements are removed from the analysis with a warning. I'll also skip the lines relevant only to cross-validation (`CV = TRUE`), which include a compatibility check here and a large conditional chunk later on.
 
 ```{r}
 # group counts and proportions of the total:
@@ -93,8 +100,8 @@ print(cbind(counts, proportions))
 
 ### variable standardization and the correlation matrix
 
-Next, we calculate the group centroids $\overline{X}=N^{-1}G^\top X\in\mathbb{R}^{q\times p}$ and the within-group covariance matrix $C_W=\frac{1}{n}{X_0}^\top{X_0}$, where ${X_0}=X-G\overline{X}$ consists of the differences between the cases (rows) of $X$ and their corresponding group centroids. `lda.default()` stores $\overline{X}$ as `group.means` and the square roots of the diagonal entries of $C_W$---that is, the standard deviations---as `f1`.
-The conditional statement requires that at least some variances be nonzero, up to the tolerance threshold `tol`. Finally, `scaling` is initialized as a diagonal matrix $S_0$ of inverted variable standard deviations $\frac{1}{\sigma_j}$, or of the square roots of the variable precisions.
+Next, we calculate the group centroids $\overline{X}=N^{-1}G^\top X\in\mathbb{R}^{q\times p}$ and the within-group covariance matrix $C_W=\frac{1}{n}{X_0}^\top{X_0}$, where ${X_0}=X-G\overline{X}$ consists of the differences between the cases (rows of $X$) and their corresponding group centroids. `lda.default()` stores $\overline{X}$ as `group.means` and the square roots of the diagonal entries of $C_W$---that is, the standard deviations---as `f1`.
+The conditional statement requires that at least some variances be nonzero, up to the tolerance threshold `tol`. Finally, `scaling` is initialized as a diagonal matrix $S_0$ of inverted variable standard deviations $\frac{1}{\sigma_j}$.
 
 ```{r}
 ## drop attributes to avoid e.g. matrix() methods
@@ -112,7 +119,7 @@ if(any(f1 < tol)) {
 scaling <- diag(1/f1, , p)
 ```
 
-I'll refer to ${X_0}$ as the "within-group centered data". The group centroids are returned as the named member `means` of the 'lda'-class object returned by `lda.default()`. The standard deviations of the five variables, stored in `f1`, are evident in their pairwise scatterplots:
+I'll refer to ${X_0}$ as the "within-group centered data". The group centroids are returned as the named member `means` of the 'lda'-class object returned by `lda.default()`. The standard deviations of and correlations among (some of) the five variables are evident in their pairwise scatterplots, which here and forward fix the aspect ratio at 1:
 
 ```{r}
 # group centroids
@@ -126,7 +133,7 @@ scaling0 <- scaling
 print(scaling0)
 ```
 
-The object `scaling` will be redefined twice as the function proceeds, each time by multiplication on the right, concluding with the member named `scaling` of the 'lda' object. We'll denote these redefinitions $S_1$ and $S_2$. These matrices act on the columns of ${X_0}$, which induces a two-sided action on $C_W$: $\frac{1}{n}({X_0}S)^\top({X_0}S)=S^\top C_WS$. The effect of $S_0$ is to standardize the variables, so that the covariance matrix of the transformed data ${X_0}S_0$ is the within-group correlation matrix $R_W$ of ${X_0}$. The effect is also evident from a comparison of the pairwise scatterplots:
+The object `scaling` will be redefined twice as the function proceeds, each time by multiplication on the right, concluding with the member named `scaling` of the 'lda' object. We'll denote these redefinitions $S_1$ and $S_2$ and store the three definitions as `scaling0`, `scaling1`, and `scaling2` for unambiguous illustrations. These matrices act on the columns of ${X_0}$, which induces a two-sided action on $C_W$: $\frac{1}{n}({X_0}S)^\top({X_0}S)=S^\top C_WS$. The effect of $S_0$ is to standardize the variables, so that the covariance matrix of the transformed data ${X_0}S_0$ is the within-group correlation matrix $R_W$ of ${X_0}$. The effect is also evident from a comparison of the pairwise scatterplots:
 
 ```{r}
 # within-group correlation matrix
@@ -139,10 +146,10 @@ pairs((x - group.means[g, ]) %*% scaling, asp = 1, pch = 19, cex = .5)
 
 ### variable sphering and the Mahalanobis distance
 
-The next step in the procedure is the signature transformation of LDA. Whereas $S_0$ removes the scales of the variables, leaving them each with unit variance but preserving their correlations, the role of $S_1$ is to additionally remove these correlations. Viewing the set of cases within each group as a cloud of $n_k$ points in $\mathbb{R}^5$, $S_0$ stretches each cloud _only along the coordinate axes_, while $S_1$ will stretch it _along its principal components_. The resulting point aggregate point cloud will have within-group covariance $I_n$ (the identity matrix), indicating unit variance and no correlation among its variables; according to these summary statistics, then, it is completely rotationally symmetric. Accordingly, the column action of $S_1$ is called a _sphering transformation_, while the distances among the transformed points are called their _Mahalanobis distances_ after [their originator](https://en.wikipedia.org/wiki/Prasanta_Chandra_Mahalanobis). See [this SO answer by whuber](https://stats.stackexchange.com/a/62147/68743) for a helpful illustration of the transformation. Its importance is illustrated in Chapter 11 of [Greenacre's _Biplots in Practice_](https://www.fbbva.es/microsite/multivariate-statistics/biplots.html) (p. 114).
+The next step in the procedure is the signature transformation of LDA. Whereas $S_0$ removes the scales of the variables, leaving them each with unit variance but preserving their correlations, the role of $S_1$ is to additionally remove these correlations. Viewing the set of cases within each group as a cloud of $n_k$ points in $\mathbb{R}^p$, $S_0$ stretches or compresses each cloud _along its coordinate axes_, while $S_1$ will stretch or compress it _along its principal components_. The resulting aggregate point cloud will have within-group covariance $I_n$ (the identity matrix), indicating unit variance and no correlation among its variables; according to these summary statistics, then, it is rotationally symmetric. Accordingly, the column action of $S_1$ is called a _sphering transformation_, while the distances among the transformed points are called their _Mahalanobis distances_ after [their originator](https://en.wikipedia.org/wiki/Prasanta_Chandra_Mahalanobis). See [this SO answer by whuber](https://stats.stackexchange.com/a/62147/68743) for a helpful illustration of the transformation. Its importance is illustrated in Chapter 11 of [Greenacre's _Biplots in Practice_](https://www.fbbva.es/microsite/multivariate-statistics/biplots.html) (p. 114).
 
 $S_1$ is calculated differently for different choices of `method` (see the documentation `?MASS::lda`). For simplicity, the code chunk below  follows the `"mle"` method.
-As hinted in the previous paragraph, the process of obtaining a sphering transformation is closely related to principal components analysis. One can be calculated via eigendecomposition of the standardized within-group covariance matrix or, equivalently, via singular value decomposition of the standardized within-group centered data $\hat{X}=X_0 S_0$.[^equiv] `lda.default()` performs SVD on $\hat{X}$, scaled by $\frac{1}{\sqrt{n}}$ so that the scatter matrix of $\frac{1}{\sqrt{n}}\hat{X}$ is $R_W$:
+As hinted in the previous paragraph, the process of obtaining a sphering transformation is closely related to principal components analysis. One can be calculated via eigendecomposition of the standardized within-group covariance matrix or, equivalently, via singular value decomposition of the standardized within-group centered data $\hat{X}=X_0 S_0$.[^equiv] `lda.default()` performs SVD on $\hat{X}$, scaled by $\frac{1}{\sqrt{n}}$ so that the scatter matrix is $R_W$:
 
 [^equiv]: These are equivalent because the matrix factors $U$ and $V$ of an SVD of any matrix $Z$ are the eigenvector matrices of $ZZ^\top$ and of $Z^\top Z$, respectively.
 
@@ -157,7 +164,7 @@ scaling <- scaling %*% X.s$v[, 1L:rank] %*% diag(1/X.s$d[1L:rank],,rank)
 ```
 
 Taking the SVD to be $\frac{1}{\sqrt{n}}\hat{X}=\hat{U}\hat{D}\hat{V}$, the sphering matrix is $S_1=S_0\hat{V}{\hat{D}}^{-1}$.
-The alternative calculation is $S_1=S_0\hat{V}{\hat{\Lambda}}^{-1/2}$, where $\hat{C}={\hat{V}}^\top\hat{\Lambda}\hat{V}$ is the eigendecomposition of the covariance matrix of $\hat{X}$ so that $\hat{V}$ is the same and $\hat{\Lambda}={\hat{D}}^{1/2}$. (${\hat{C}}^{-1/2}=\hat{V}{\hat{\Lambda}}^{-1/2}{\hat{V}}^\top$ is the symmetric square root of $\hat{C}$.)
+The alternative calculation is $S_1=S_0\hat{V}{\hat{\Lambda}}^{-1/2}$, where $\hat{C}={\hat{V}}^\top\hat{\Lambda}\hat{V}$ is the eigendecomposition of the covariance matrix of $\hat{X}$ so that $\hat{V}$ is the same and $\hat{\Lambda}={\hat{D}}^{1/2}$. (${\hat{C}}^{-1/2}=\hat{V}{\hat{\Lambda}}^{-1/2}{\hat{V}}^\top$ is called the symmetric square root of $\hat{C}$.)
 Note that the signs of the columns are arbitrary, as in PCA. The difference in absolute values is due to `stats::cov()` treating $\hat{X}$ as a sample rather than a population, dividing the scatter matrix $\hat{X}^\top \hat{X}$ by $\frac{1}{n-1}$ rather than by $\frac{1}{n}$.
 
 ```{r}
@@ -173,7 +180,7 @@ print(scaling1)
 ```
 
 The sphered within-group centered data now have identity within-group covariance matrix, up to a reasonable tolerance. The sphered coordinates are true to their name, as along each pair of variable coordinates the point cloud exhibits no elliptical tendencies.
-While `rank` is 5 at this stage, indicating that variation is detected in each of the variables, the final computational step will determine the rank of the LDA itself in terms of the transformed group centroids.
+While `rank` is 5 ($=p$) at this stage, indicating that variation is detected in each of the variables, the final computational step will determine the rank of the LDA itself in terms of the transformed group centroids.
 
 ```{r}
 # within-group covariance matrix after sphering
@@ -187,8 +194,8 @@ print(rank)
 ### sphering-transformed group centroids and discriminant coefficients
 
 The original problem of LDA was to eigendecompose ${C_W}^{-1}C_B$, where $C_B=\frac{1}{q}Y^\top Y$ is the between-groups covariance matrix derived from the centered group centroids $Y=G\overline{X}-\mathbb{1}_{n\times 1}\overline{x}\in\mathbb{R}^{n\times p}$ using the data centroid $\overline{x}=\frac{1}{n}\mathbb{1}_{1\times n}X\in\mathbb{R}^{1\times p}$ (and duplicated according to the group counts).
-`lda.default()` relies on an equivalent calculation $C_B=\frac{1}{q}\overline{Y}^\top\overline{Y}$, using $\overline{Y}=N(\overline{X}-\mathbb{1}_{q\times 1}\overline{x})$, which explicitly weights the centered group centroids and produces the same scatter matrix as $Y$.
-Under the transformed coordinates ${X_0}S_1$, the matrix quotient to be eigendecomposed becomes $$({S_1}^\top C_WS_1)^{-1}({S_1}^\top C_BS_1)=I_p{S_1}^\top C_BS_1=\frac{1}{q}(YS_1)^\top(YS_1)=\frac{1}{q}(\overline{Y}S_1)^\top(\overline{Y}S_1),$$
+`lda.default()` relies on an equivalent calculation $C_B=\frac{1}{q}\overline{Y}^\top\overline{Y}$, using $\overline{Y}=N(\overline{X}-\mathbb{1}_{q\times 1}\overline{x})$, which explicitly weights the centered group centroids by the group counts and produces the same scatter matrix as $Y$.
+Under the transformed coordinates ${X_0}S_1$, the matrix quotient to be eigendecomposed becomes $$\textstyle({S_1}^\top C_WS_1)^{-1}({S_1}^\top C_BS_1)=I_p{S_1}^\top C_BS_1=\frac{1}{q}(YS_1)^\top(YS_1)=\frac{1}{q}(\overline{Y}S_1)^\top(\overline{Y}S_1),$$
 the between-groups covariance calculated from the sphering-transformed centered group centroids.[^sphered]
 This is the first calculation using $C_B$, which is how `lda.default()` can wait until here to calculate the data centroid `xbar`.
 

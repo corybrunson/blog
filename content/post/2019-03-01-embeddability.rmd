@@ -3,6 +3,7 @@ draft: false
 title: embed with the Petersens
 author: ~
 date: 2019-03-01
+slug: embeddability
 categories: [curiosity]
 tags: [graph theory,embeddability,petersen family]
 ---
