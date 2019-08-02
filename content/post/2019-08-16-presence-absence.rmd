@@ -1,0 +1,17 @@
+---
+draft: true
+title: i don't like correlation network models of presence--absence data
+author: ~
+date: 2019-08-16
+slug: presence-absence
+categories: [progress]
+tags: [network analysis,correlation,presence-absence data,finches]
+---
+
+```{r knitr options, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.height = 3, fig.width = 8
+)
+```
+
