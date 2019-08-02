@@ -5,7 +5,7 @@ author: ~
 date: 2019-08-02
 slug: lda
 categories: [methodology]
-tags: [ordination,biplot,linear discriminant analysis]
+tags: [ordination,biplot,software packages,linear discriminant analysis]
 ---
 
 ```{r knitr options, echo=FALSE}
