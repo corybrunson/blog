@@ -4,7 +4,7 @@ title: multidimensional rotating and rank correlations
 author: ~
 date: 2019-06-12
 slug: rank-correlations
-categories: [progress,methodology]
+categories: [methodology]
 tags: [correlation,rank,eigendecomposition,biplot]
 ---
 
@@ -15,3 +15,21 @@ knitr::opts_chunk$set(
 )
 ```
 
+A fundamental idea in biplot methodology is the _conference of inertia_, a phrase i picked up from [an SO answer by ttnphns](https://stats.stackexchange.com/a/141755/68743) and quickly incorporated into [ordr](https://github.com/corybrunson/ordr/blob/master/R/ord-conference.r). The basic idea arises from the central properties of a biplot, for example in a principal components analysis: Conventionally, a case--variable data matrix $X\in\mathbb{R}^{n\times m}$ of ratio variables[^ratio] is singular-value decomposed as $X=UDV^\top$ and biplotted with _principal_ case coordinates $UD\in\mathbb{R}^{n\times r}$ and _standardized_ variable coordinates $V\in\mathbb{R}^{m\times r}$. Under this convention, $U$ and $V$ arise from eigendecompositions of $XX^\top$ and of $X\top X$, respectively, and $D$ is the diagonal matrix of the square roots of their (common) eigenvalues. Because both sets of eigenvectors $U=\left[\,u_1\,\cdots\,u_r\,\right]$ and $V=\left[\,v_1\,\cdots\,v_r\,\right]$ are orthonormal, $U^\top U=I_r=V^\top V$ and the total inertia (variance) in each matrix is $\sum_{j=1}^{r}{{v_j}^2}=r=\sum_{j=1}^{r}{{v_j}^2}$. Instead, $D$ contains all of the inertia of $X$.
+
+[^ratio]: That is to say, if the variables don't have meaningful zero values and/or commensurate scales, then they should probably be centered to zero mean and/or scaled to unit variance.
+
+
+
+```{r}
+x <- scale(mtcars, center = TRUE, scale = TRUE)
+sum(x^2)
+x.d <- dist(x)
+x.c <- cor(x)
+s <- svd(x)
+s.d <- dist(s$u %*% diag(s$d))
+s.c <- s$v %*% diag(s$d^2) %*% t(s$v)
+sum(s$d^2)
+plot(x = as.vector(x.d), y = as.vector(s.d))
+plot(x = as.vector(x.c[lower.tri(x.c)]), y = as.vector(s.c[lower.tri(s.c)]))
+```
