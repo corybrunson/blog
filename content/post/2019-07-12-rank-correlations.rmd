@@ -1,8 +1,9 @@
 ---
 draft: true
-title: 
+title: multidimensional rotating and rank correlations
 author: ~
 date: 2019-06-12
+slug: rank-correlations
 categories: [progress,methodology]
 tags: [correlation,rank,eigendecomposition,biplot]
 ---
@@ -13,3 +14,4 @@ knitr::opts_chunk$set(
   fig.height = 3, fig.width = 3
 )
 ```
+
