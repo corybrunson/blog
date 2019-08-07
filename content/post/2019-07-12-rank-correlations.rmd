@@ -23,7 +23,7 @@ s <- svd(x)
 r <- length(s$d)
 ```
 
-Under this convention, $U\in\mathbb{R}^{n\times r}$ and $V\in\mathbb{R}^{m\times r}$ arise from eigendecompositions of $XX^\top$ and of $X\top X$, respectively, and $D\in\mathbb{R}^{r\times r}$ is the diagonal matrix of the square roots of their (common) eigenvalues. The matrix factors may be biplotted in three conventional ways:
+Under this convention, $U\in\mathbb{R}^{n\times r}$ and $V\in\mathbb{R}^{m\times r}$ arise from eigendecompositions of $XX^\top$ and of $X^\top X$, respectively, and $D\in\mathbb{R}^{r\times r}$ is the diagonal matrix of the square roots of their (common) eigenvalues. The matrix factors may be biplotted in three conventional ways:
 
 * with _principal_ case coordinates $UD$ and _standardized_ variable coordinates $V$;
 * with standardized case coordinates $U$ and principal variable coordinates $VD$;
@@ -45,7 +45,7 @@ sum(s$d^2)
 
 This inertia can then be _conferred_ unto the standardized case or variable coordinates, transforming one or the other into principal coordinates (the first two options above) or both halfway there (the symmetric option). Each of these options confers the inertia in such a way that the sums of the exponents of $D$ in the transformed sets of case ($F=UD^p$) and variable ($G=VD^q$) coordinates is $p+q=1$, which ensures the _inner product relationship_ $FG^\top=X$ between them. This recovers any entry $x_{ij}$ of $X$ as the inner product $f_i\cdot g_i$ of its case and variable coordinates $f_i=[\,f_{i,1}\,\cdots\,f_{i,r}\,]$ and $g_i=[\,g_{i,1}\,\cdots\,g_{i,r}\,]$.
 
-By conferring the inertia entirely to the cases or variables, we preserve (or best approximate) the geometric configurations of the cases or variables, respectively. In PCA, the geometry of the cases is usually thought of in terms of the distances (dissimilarities) between them. Here their pairwise distances in the first two PCA dimensions are plotted against their "true" distances in the variable space:
+By conferring the inertia entirely to the cases or variables, we preserve (or best approximate) the geometric configurations of the cases or variables, respectively. In PCA, the geometry of the cases is usually thought of in terms of the distances (dissimilarities) between them. Here their pairwise distances $\sqrt{(f_{j,1}-f_{i,1})^2+(f_{j,2}-f_{i,2})^2}$ in the first two PCA dimensions are plotted against their "true" distances $\left(\sum_{k=1}^{m}{(x_{j,k}-x_{i,k})^2}\right)^{1/2}$ in the variable space:
 
 ```{r case geometry, fig.width = 5.5}
 # distances between cases
@@ -61,9 +61,9 @@ plot(
 )
 ```
 
-Meanwhile, the geometry of the variables is usually understood through their covariances or correlations. The covariance between two variables $i,j$ is proportional to their inner product $$\textstyle \operatorname{cov}_{ij}=\frac{1}{n}v_i\cdot v_j=\frac{1}{n}\lVert v_i\rVert\lVert v_j\rVert\cos\theta_{ij}\text,$$ so that the cosine the angle $\theta_{ij}$ between them equals their correlation:
-$$\cos\theta_{ij}=\frac{\operatorname{cov}_{ij}}{\sqrt{\operatorname{cov}_{ii}\operatorname{cov}_{jj}}/n}=\frac{\operatorname{cov}_{ij}}{\sigma_i\sigma_j}=r_{ij}$$
-Here the cosines between the variable vectors in the first two PCA dimensions are plotted against their correlations across the original cases:
+Meanwhile, the geometry of the variables is usually understood through their covariances or correlations. Writing $X=[\,y_1\,\cdots\,y_m\,]$ as an array of column variables, the covariance between $y_i$ and $y_j$ is proportional to their inner product $$\textstyle \operatorname{cov}(y_i,y_j)=\frac{1}{n}y_i\cdot y_j=\frac{1}{n}\lVert y_i\rVert\lVert y_j\rVert\cos\theta_{ij}\text,$$ so that the cosine the angle $\theta_{ij}$ between them equals their correlation:
+$$\cos\theta_{ij}=\frac{\operatorname{cov}(y_i,y_j)}{\sqrt{\operatorname{cov}(y_i,y_i)\operatorname{cov}(y_j,y_j)}/n}=\frac{\operatorname{cov}(y_i,y_j)}{\sigma_i\sigma_j}=r_{ij}$$
+Here the cosines $\frac{g_i}{\lVert g_i\rVert}\cdot\frac{g_j}{\lVert g_j\rVert}$ between the variable vectors in the first two PCA dimensions are plotted against their correlations $r_{ij}$ across the original cases:
 
 ```{r variable geometry, fig.width = 5.5}
 # correlations between variables
@@ -96,7 +96,7 @@ plot(d.coord, pch = NA, asp = 1, xlab = "", ylab = "")
 text(d.coord, labels = rownames(d))
 ```
 
-The faithful approximation of inter-variable covariances by the inner products of their principal-coordinate vectors suggests a complementary technique that i haven't found explicitly discussed in my own background reading. Suppose we have data that is again coordinate-free but that consists this time not of distances between the cases but of covariances $\operatorname{cov}_{ij},\ 1\leq i,j\leq m$ between the variables. Had the original data been a _centered_ case--variable matrix $X$, then the covariance matrix $C=(\operatorname{cov}_{ij})$ would been obtained as $C=\frac{1}{n}X^\top X$, which is (up to scalar) the matrix whose eigenvectors would be given by $V$ in the SVD $X=UDV^\top$. Therefore, we can fabricate coordinates for the $m$ variables that approximate what we know of their geometry---in this case, thinking of the variables as vectors, their magnitudes and the angles between them---via an eigendecomposition $C=V\Lambda V^\top$: Take $Y=V\Lambda^{1/2}\in\mathbb{R}^{m\times r}$, so that $Y^\top Y=C$. We can also obtain coordinates in fewer dimensions that best recover the geometry using the first eigenvectors and -values.
+The faithful approximation of inter-variable covariances by the inner products of their principal-coordinate vectors suggests a complementary technique that i haven't found explicitly discussed in my own background reading. Suppose we have data that is again coordinate-free but that consists this time not of distances between the cases but of covariances $\operatorname{cov}(y_i,y_j),\ 1\leq i,j\leq m$ between the variables. Had the original data been a _centered_ case--variable matrix $X$, then the covariance matrix $C=(\operatorname{cov}(y_i,y_j))$ would been obtained as $C=\frac{1}{n}X^\top X$, which is (up to scalar) the matrix whose eigenvectors would be given by $V$ in the SVD $X=UDV^\top$. Therefore, we can fabricate coordinates for the $m$ variables that approximate what we know of their geometry---in this case, thinking of the variables as vectors, their magnitudes and the angles between them---via an eigendecomposition $C=V\Lambda V^\top$: Take $Y=V\Lambda^{1/2}\in\mathbb{R}^{m\times r}$, so that $Y^\top Y=C$. We can also obtain coordinates in fewer dimensions that best recover the geometry using the first eigenvectors and -values.
 
 I'll validate this line of reasoning by taking the `mtcars` data set for a spin:
 
