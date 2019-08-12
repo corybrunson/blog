@@ -4,7 +4,7 @@ title: I AM THE DISCRIMINANT
 author: ~
 date: 2019-08-02
 slug: lda
-categories: [methodology]
+categories: [progress]
 tags: [ordination,biplot,software packages,linear discriminant analysis]
 ---
 
