@@ -2,9 +2,9 @@
 draft: true
 title: i don't like correlation network models of presence--absence data
 author: ~
-date: 2019-08-16
+date: 2019-08-30
 slug: presence-absence
-categories: [progress]
+categories: [methodology]
 tags: [network analysis,correlation,presence-absence data,finches]
 ---
 
@@ -15,3 +15,22 @@ knitr::opts_chunk$set(
 )
 ```
 
+A project i've had in the works for years, and "almost done" [since last summer](https://www.siam.org/Conferences/CM/Conference/ns18), is a sensitivity and robustness analysis of several techniques used in studies of "comorbidity networks" (also "disease graphs", "disease maps", etc.) that have appeared over the past 20 years. As i begin the abstract:
+
+> Comorbidity network analysis (CNA) is an increasingly popular approach in systems medicine, in which mathematical graphs encode epidemiological correlations (links) between diseases (nodes) inferred from their occurrence in an underlying patient population.
+
+An essential part of this project is a comparison of pairwise versus multivariate network construction. A **pairwise** (or, more generally, "motif-wise") construction involves aggregating the network from links determined from some measure of association between pairs (or among motifs) of coded disorders. While many such measures are simply defined in terms of data, others, most notably correlation coefficients, are assumed to have latent values that must be estimated from data. In some studies, these estimates control for patient-level covariates such as age, sex, and ethnic group. A **multivariate** construction involves controlling these estimates for _other disorders_, whose various associations are also being estimated. (Multivariate constructions may but needn't also control for patient-level covariates.)
+
+### multivariate techniques for network construction
+
+I adopted two multivariate approaches to compare to the pairwise approach: One, which uses partial correlation coefficients, has been introduced in psychology and was the subject of [a 2017 tutorial by Epskamp and Fried](https://arxiv.org/abs/1607.01367). If $m$ variables $y_i\mid 1\leq i\leq m$ have standard deviations $\sigma_i$, then the _full partial correlation_ of $y_i$ and $y_j$ is the standardized regression coefficient $\displaystyle r'_{ij}=\frac{\sigma_j}{\sigma_i}\beta_{ij}$ from the linear model predicting $y_i$ from all other variables---or, equivalently, $\displaystyle r'_{ji}=\frac{\sigma_i}{\sigma_j}\beta_{ji}$ from the model predicting $y_j$. The _partial correlation network_ $G'$ is aggregated from the $r'_{ij}$. Since these correlations are controlled for the effects of other variables, $G'$ should include far fewer [transitive correlations]() than a pairwise network.
+
+The other multivariate approach i borrowed from the ecology literature. On my reading, ecology has always been at the cutting edge of multivariate statistical analysis, and lately there have been proposed several correlation and network models to overcome the well-documented limitations of pairwise techniques. Mostly because the authors made a tutorial for their method publicly available, i adopted the _joint distribution model_ (JDM) [proposed by Pollock and colleagues](). Though the model was developed to handle both variable interactions ("endogenous" effects) and case-level covariates ("exogenous" effects), for this illustration i'm only concerned with endogenous information.
+
+The JDM assumes that a $0,1$-matrix $X\in\{0,1\}^{n\times m}$ is obtained from a latent multivariate normal distribution ....
+
+In each construction, two variables are linked in the network when their association is both _discernible_ and _strong_. "Discernibility" has to do with the detection of a statistical signal, and is a cautious substitution for the misleading and often-abused term "significance". "Strength" has to do with the size of the relative amount by which change in one variable predicts change in the other, assuming the pattern in the data reflects the latent relationship (and would be a better referent for "significance" anyway).
+
+### presence--absence data
+
+Of the models described---"pairwise", "partial", and "joint"---only the JDM is specifically tailored for a certain kind of data, specifically presence--absence data. _Presence--absence data_ constitute a case--condition matrix $X\in\{0,1\}^{n\times m}$ whose each entry $x_{ij}\in\{0,1\}$ is one if case $i$ satisfies condition $j$ and zero if not. The term "presence--absence" derives from ecology, where the cases and conditions are sites and species and $x_{ij}=1$ indicates that species $j$ was observed at site $i$. ....
