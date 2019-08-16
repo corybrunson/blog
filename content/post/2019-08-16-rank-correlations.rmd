@@ -1,6 +1,6 @@
 ---
-draft: true
-title: multidimensional scaling of variables and rank correlations
+draft: false
+title: multidimensional scaling of variables, and rank correlations
 author: ~
 date: 2019-08-16
 slug: rank-correlations
