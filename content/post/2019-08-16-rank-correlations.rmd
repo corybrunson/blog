@@ -29,7 +29,7 @@ Under this convention, $U\in\mathbb{R}^{n\times r}$ and $V\in\mathbb{R}^{m\times
 * with standardized case coordinates $U$ and principal variable coordinates $VD$;
 * with _symmetric_ case and variable coordinates $UD^{1/2}$ and $VD^{1/2}$.
 
-Because both sets of eigenvectors $U=\left[\,u_1\,\cdots\,u_r\,\right]$ and $V=\left[\,v_1\,\cdots\,v_r\,\right]$ are orthonormal, $U^\top U=I_r=V^\top V$ and the total inertia (variance) in each matrix is $\sum_{j=1}^{r}{{v_j}^2}=r=\sum_{j=1}^{r}{{v_j}^2}$. Meanwhile, $D$ contains all of the inertia of $X$:
+Because both sets of eigenvectors $U=\left[\,u_1\,\cdots\,u_r\,\right]$ and $V=\left[\,v_1\,\cdots\,v_r\,\right]$ are orthonormal, $U^\top U=I_r=V^\top V$ and the total inertia (variance) in each matrix is $\sum_{j=1}^{r}{ {v_j}^2 }=r=\sum_{j=1}^{r}{ {v_j}^2 }$. Meanwhile, $D$ contains all of the inertia of $X$:
 
 [^ratio]: That is to say, if the variables don't have meaningful zero values and/or commensurate scales, then they should be centered to zero mean and/or scaled to unit variance.
 
