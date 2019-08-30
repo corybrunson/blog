@@ -163,8 +163,8 @@ if(rank < p) warning("variables are collinear")
 scaling <- scaling %*% X.s$v[, 1L:rank] %*% diag(1/X.s$d[1L:rank],,rank)
 ```
 
-Taking the SVD to be $\frac{1}{\sqrt{n}}\hat{X}=\hat{U}\hat{D}\hat{V}$, the sphering matrix is $S_1=S_0\hat{V}{\hat{D}}^{-1}$.
-The alternative calculation is $S_1=S_0\hat{V}{\hat{\Lambda}}^{-1/2}$, where $\hat{C}={\hat{V}}^\top\hat{\Lambda}\hat{V}$ is the eigendecomposition of the covariance matrix of $\hat{X}$ so that $\hat{V}$ is the same and $\hat{\Lambda}={\hat{D}}^{1/2}$. (${\hat{C}}^{-1/2}=\hat{V}{\hat{\Lambda}}^{-1/2}{\hat{V}}^\top$ is called the symmetric square root of $\hat{C}$.)
+Taking the SVD to be $\frac{1}{\sqrt{n}}\hat{X}=\hat{U}\hat{D}\hat{V}^\top$, the sphering matrix is $S_1=S_0\hat{V}{\hat{D}}^{-1}$.
+The alternative calculation is $S_1=S_0\hat{V}{\hat{\Lambda}}^{-1/2}$, where $\hat{C}=\hat{V}\hat{\Lambda}{\hat{V}}^\top$ is the eigendecomposition of the covariance matrix of $\hat{X}$ so that $\hat{V}$ is the same and $\hat{\Lambda}={\hat{D}}^{1/2}$. (${\hat{C}}^{-1/2}=\hat{V}{\hat{\Lambda}}^{-1/2}{\hat{V}}^\top$ is called the symmetric square root of $\hat{C}$.)
 Note that the signs of the columns are arbitrary, as in PCA. The difference in absolute values is due to `stats::cov()` treating $\hat{X}$ as a sample rather than a population, dividing the scatter matrix $\hat{X}^\top \hat{X}$ by $\frac{1}{n-1}$ rather than by $\frac{1}{n}$.
 
 ```{r}

@@ -1,0 +1,52 @@
+---
+draft: false
+title: comparing pairwise and multivariate correlation networks of binary data
+author: ~
+date: 2019-08-30
+slug: presence-absence
+categories: [methodology]
+tags: [network analysis,correlation,presence-absence data,finches]
+---
+
+```{r knitr options, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.height = 3, fig.width = 8
+)
+```
+
+A project i've had in the works for years, and "almost done" [since last summer](https://www.siam.org/Conferences/CM/Conference/ns18), is a sensitivity and robustness analysis of several techniques used in studies of "comorbidity networks" (also "disease graphs", "disease maps", etc.) that have appeared over the past 20 years. As i begin the abstract:
+
+> Comorbidity network analysis (CNA) is an increasingly popular approach in systems medicine, in which mathematical graphs encode epidemiological correlations (links) between diseases (nodes) inferred from their occurrence in an underlying patient population.
+
+An essential part of this project is a comparison of pairwise versus multivariate network construction. A **pairwise** (or, more generally, "motif-wise") construction involves aggregating the network from links determined from some measure of association between pairs (or among motifs) of coded disorders. While many such measures are simply defined in terms of data, others, most notably correlation coefficients, are assumed to have latent values that must be estimated from data. In some studies, these estimates control for patient-level covariates such as age, sex, and ethnic group. A **multivariate** construction involves controlling these estimates for _other disorders_, whose various associations are also being estimated. (Multivariate constructions may but needn't also control for patient-level covariates.)
+
+To understand the problem of identifying suitable multivariate models, it's important to know that the underlying data are binary, having the structure of presence--absence data.
+_Presence--absence data_ constitute a case--condition matrix $X\in\{0,1\}^{n\times m}$ whose each entry $x_{ij}\in\{0,1\}$ is one if case $i$ satisfies condition $j$ and zero if not. The term "presence--absence" derives from ecology, where the cases and conditions are sites and species and $x_{ij}=1$ indicates that species $j$ was observed at site $i$.
+
+A variety of binary association measures emerged in earlier ecology studies---check out [the survey and comparison by Hubálek from 1982](https://www.researchgate.net/profile/Zdenek_Hubalek/publication/229695992_Coefficients_of_Association_and_Similarity_Based_on_Binary_Presence-Absence_Data_An_Evaluation/links/5a2e5ef445851552ae7f1ddc/Coefficients-of-Association-and-Similarity-Based-on-Binary-Presence-Absence-Data-An-Evaluation.pdf)---and a handful, including the correlation coefficient $\phi$ (A<sub>30</sub>) attributed independently to Yule and to Pearson and Heron and Forbes' coefficient of association (A<sub>40</sub>), made their way into comorbidity network analysis, together with the odds ratio more widely used in medical research. By and large, these statistics do not generalize to summaries of 3 or more variables; those that do tend to be correlation coefficients.
+
+### multivariate techniques for network construction
+
+I adopted two multivariate approaches to compare to the pairwise approach: One, which uses partial correlation coefficients, has been introduced in psychology and was the subject of [a 2017 tutorial by Epskamp and Fried](https://arxiv.org/abs/1607.01367). If $m$ variables $y_i\mid 1\leq i\leq m$ have standard deviations $\sigma_i$, then the _full partial correlation_ of $y_i$ and $y_j$ is the standardized regression coefficient $\displaystyle r'_{ij}=\frac{\sigma_j}{\sigma_i}\beta_{ij}$ from the linear model predicting $y_i$ from all other variables---or, equivalently, $\displaystyle r'_{ji}=\frac{\sigma_i}{\sigma_j}\beta_{ji}$ from the model predicting $y_j$. The _partial correlation network_ $G'$ is aggregated from the $r'_{ij}$. Since these correlations are controlled for the effects of other variables, $G'$ should include far fewer [transitive correlations](https://terrytao.wordpress.com/2014/06/05/when-is-correlation-transitive/) than a pairwise network.
+
+Conveniently, partial correlations can be calculated from whatever pairwise correlations one begins with.
+
+I also wanted to borrow from the current ecology literature. On my reading, ecology has always been at the cutting edge of multivariate statistical analysis, and lately there have been proposed several correlation and network models to overcome the well-documented limitations of pairwise techniques. These proposals have been motivated by a desire to capture a variety of interactions among species, geography, and environment. The reviews i've found aren't recent enough to have surveyed the most interesting examples, which include [Ulrich & Gotelli (2007)](https://onlinelibrary.wiley.com/doi/full/10.1111/j.2007.0030-1299.16173.x), [Ovaskainen, Hottola, & Siitonen (2010)](https://esajournals.onlinelibrary.wiley.com/doi/full/10.1890/10-0173.1), [Cazelles, Araújo, Mouquet, & Gravel (2016)](https://link.springer.com/article/10.1007%2Fs12080-015-0281-9), and [Morueta-Holme et al (2015)](https://onlinelibrary.wiley.com/doi/full/10.1111/ecog.01892).
+
+Mostly because the authors included an tutorial for their method implemented in R in their supporting information, i adopted the _joint distribution model_ (JDM) [proposed by Pollock and colleagues](https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.12180).[^jsdm] Though the model was developed to handle both variable interactions ("endogenous" effects) and case-level covariates ("exogenous" effects), for this illustration i'm only concerned with endogenous information.
+
+[^jsdm]: Pollock and colleagues call this a "joint species distribution model", but since i'm applying the method outside ecology, and since the structure of the model clarifies which distributions its name refers to, i'm leaving out the qualifier.
+
+This simplified JDM assumes that each row of a $0,1$-matrix $X\in\{0,1\}^{n\times m}$ is obtained from a latent multivariate normal distribution with center $\vec\mu=[\,\mu_1\,\cdots\,\mu_m\,]$ and covariance matrix $\Sigma$. The $\mu_j$ encode the prevalences of the column variables of $X$ while $\Sigma$ encodes their correlations. If $Z\sim N(\vec\mu,\Sigma)$, then the rows of $X$ are assumed to have been generated from samples $\vec z_i=[\,z_1\,\cdots\,z_m\,]$ as $$x_{ij}=\begin{cases} 0 & z_{ij}\leq 0 \\ 1 & z_{ij}>0 \end{cases}\text.$$ The model is hierarchical with respect to the meta-parameters $\mu$ and $\sigma$ and is fit using Bayesian methods. I'll denote the correlation matrix estimated this way as $\hat{\mathrm{P}}=(\hat\rho_{ij})$, since Pollock and colleagues designate the underlying correlation matrix $\mathrm{P}$ (capital $\rho$).
+
+In each construction, two variables are linked in the network when their association is both _discernible_ and _strong_. "Discernibility" has to do with the detection of a statistical signal, and is a cautious substitution for the misleading and often-abused term "significance". "Strength" has to do with the size of the relative amount by which change in one variable predicts change in the other, assuming the pattern in the data reflects the latent relationship (and would be a better referent for "significance" anyway).
+
+### a comparable pairwise construction
+
+Since partial correlations can be calculated from any sample correlation data, a grand comparison of these three approaches requires only a (pairwise) correlation coefficient that meaningfully compares to $\hat\rho_{ij}$. The JDM relies on a latent multivariate normal, so a natural choice---once i found it---is a correlation coefficient based on a latent _bivariate_ normal: the _tetrachoric correlation coefficient_, often denoted $r_t$.
+
+The setup for $r_t$ is a distribution $N(\mu,\Sigma)$ with means $\vec\mu=[\,\mu_1,\mu_2\,]$ and covariance $$\Sigma=\left(\begin{array}{cc} \!{\sigma_1}^2\! & \!\rho\sigma_1\sigma_2\! \\ \!\rho\sigma_1\sigma_2\! & \!{\sigma_2}^2\! \end{array}\right)\text.$$
+The upshot is that, as in the JDM, the value of the statistic is an estimate of the hidden (latent) correlation coefficient $\rho$. Several estimation techniques are discussion in [Drasgow's entry for the _Encyclopedia of Statistical Sciences_](https://www.researchgate.net/publication/313196484_Polychoric_and_polyserial_correlations).
+
+Implementations of all three statistics are available but require a bit of lead-in, so i'll come back to this topic---and a grand comparison---in a future post.
