@@ -1,0 +1,18 @@
+---
+draft: true
+title: comparing pairwise and multivariate correlation networks
+author: ~
+date: 
+slug: presence-absence
+categories: [methodology]
+tags: [network analysis,correlation,presence-absence data,finches]
+---
+
+```{r knitr options, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.height = 3, fig.width = 8
+)
+```
+
+In each construction, two variables are linked in the network when their association is both _discernible_ and _strong_. "Discernibility" has to do with the detection of a statistical signal, and is a cautious substitution for the misleading and often-abused term "significance". "Strength" has to do with the size of the relative amount by which change in one variable predicts change in the other, assuming the pattern in the data reflects the latent relationship (and would be a better referent for "significance" anyway).
