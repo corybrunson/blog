@@ -10,6 +10,7 @@ tags: [statistical topology,software packages,klein bottle]
 
 ```{r knitr options, echo=FALSE}
 knitr::opts_chunk$set(message = FALSE)
+set.seed(8463)
 ```
 
 ### an apparent dearth of toy TDA samplers
@@ -187,17 +188,17 @@ Effectively, we retain \(\theta\) when \((\theta,\eta)\) lies in the shaded regi
 sample_klein_theta <- function(n, r) {
   x <- c()
   while (length(x) < n) {
-    theta <- stats::runif(n, 0, 2 * pi)
+    theta <- runif(n, 0, 2 * pi)
     jacobian <- jacobian_klein(r)
     jacobian_theta <- sapply(theta, jacobian)
-    eta <- stats::runif(n, 0, jacobian(0))
+    eta <- runif(n, 0, jacobian(0))
     x <- c(x, theta[jacobian_theta > eta])
   }
   x[1:n]
 }
 sample_klein <- function(n, r) {
   d <- tibble(
-    phi = stats::runif(n, 0, 2*pi),
+    phi = runif(n, 0, 2*pi),
     theta = sample_klein_theta(n, r)
   )
   f <- param_klein(r)
@@ -225,14 +226,18 @@ tibble(theta = runif(840, 0, 2*pi), phi = runif(840, 0, 2*pi)) %>%
   f_klein() %>%
   as.matrix() %>%
   TDAstats::calculate_homology(dim = 1) %>%
-  TDAstats::plot_persist() ->
+  TDAstats::plot_persist() +
+  scale_y_continuous(limits = c(0, 1)) ->
   ph_klein_warp
 sample_klein(n = 840, r = .5) %>%
   as.matrix() %>%
   TDAstats::calculate_homology(dim = 1) %>%
-  TDAstats::plot_persist() ->
+  TDAstats::plot_persist() +
+  scale_y_continuous(limits = c(0, 1)) ->
   ph_klein_unif
 gridExtra::grid.arrange(ph_klein_warp, ph_klein_unif, ncol = 2)
 ```
 
-Indeed, while PH captures the topology of \(\mathbb{K}\) from both samples, the noise is noticeably reduced in the latter. Voila!
+Indeed, while PH captures the topology of \(\mathbb{K}\) from both samples, the noise is noticeably reduced in the latter. Voila![^seed]
+
+[^seed]: I finally got around to setting a random seed for this post and took the opportunity to run it several times. While the present version uses the randomly-selected seed, other runs produced PH diagrams that sometimes favored the naïve over the uniform sample (in terms of noise). So, this is by no means a conclusive observation, though one may be in the works....
