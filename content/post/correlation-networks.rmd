@@ -3,7 +3,7 @@ draft: true
 title: comparing pairwise and multivariate correlation networks
 author: ~
 date: 
-slug: presence-absence
+slug: correlation-networks
 categories: [methodology]
 tags: [network analysis,correlation,presence-absence data,finches]
 ---

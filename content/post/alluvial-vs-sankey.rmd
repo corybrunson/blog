@@ -1,0 +1,59 @@
+---
+draft: true
+title: defining alluvial diagrams
+author: ~
+date: 
+slug: alluvial-vs-sankey
+categories: [progress]
+tags: [flow diagrams,sankey diagrams,alluvial diagrams,visualization]
+---
+
+```{r knitr options, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.height = 3, fig.width = 8
+)
+```
+
+## Background
+
+I first encountered alluvial diagrams, so-called, in a widely-shared 2010 [paper](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0008694) by Rosvall and Bergstrom. They were investigating the shifting boundaries between distinct scientific fields ("modules"), as reconstructed from sequential years of journal citation data ("states"), and proposed a specialized flow diagram "to highlight the significant changes, fusions, and fissions that the modules undergo between each pair of successive states". At the time, i was unfamiliar with Sankey diagrams and only passingly familiar with flow diagrams---mostly by way of my computational biologist colleagues and their literature-derived signal transduction networks---but i could imagine myriad uses for the technique and eventually went searching for an implementation in R.
+
+This led me to the [alluvial](https://github.com/mbojan/alluvial) package, which Michał Bojanowski was actively developing. As i got more comfortable with and excited about the then-ascendant tidyverse, i took it upon myself to put together [a ggplot2 extension](https://github.com/corybrunson/ggalluvial), which has since become considerably widely used. I later learned that previous developers had released similar extensions, specifically parallel sets plots in Thomas Lin Pedersen's [ggforce](https://ggforce.data-imaginist.com) and in Heike Hofmann's [ggparallel](https://github.com/heike/ggparallel).[^ggpcp]
+With continual exposure to these diverse implementations, i began to notice some subtle but important distinctions between our design principles. It also became clear that there was no consesus distinction between "alluvial" diagrams/plots and the much more well-established genres of "Sankey" diagrams and "parallel sets" plots---indeed, no consensus on whether a distinction existed! The lack of generally accepted terms surrounding these sorts of diagrams remains a source of confusion. My goal in this post is to propose a vocabulary and a taxonomy to ~~alluviate~~ alleviate this confusion, or at least serve as a point of reference for others to propose improvements!
+
+[^ggpcp]: I only just discovered Yawei Ge's [ggpcp](https://yaweige.github.io/ggpcp/) package for general parallel coordinate plots, under active development!
+
+## A proposed taxonomy of width-encoded flow diagrams
+
+This is my proposal in a nutshell:
+$$\begin{array}{c}
+\text{alluvial diagrams/plots}\\
+\cap\\
+\text{parallel sets plots}\\
+\cap\\
+\text{Sankey diagrams}\\
+\cap\\
+\text{width-encoded flow diagrams}\\
+\cap\\
+\text{flow diagrams}
+\end{array}$$
+
+...
+
+| type of diagram | distinguishing feature(s)     | peculiar terms          |
+|-----------------|-------------------------------|-------------------------|
+| alluvial        | cumulative weight coordinate  | stratum, alluvium, lode |
+| parallel sets   | parallel axis coordinate      | axis, set               |
+| Sankey          |                               | node                    |
+| width-encoded   | weight encoded as flow widths | flow                    |
+
+
+
+## References
+
+* <https://matthewdharris.com/2017/11/11/a-brief-diversion-into-static-alluvial-sankey-diagrams-in-r/>
+* <https://www.jasondavies.com/parallel-sets/>
+* <https://rawgraphs.io/learning/how-to-make-an-alluvial-diagram/>
+* <https://datavizproject.com/data-type/alluvial-diagram/>
+* <https://datascience.blog.wzb.eu/2016/09/27/parallel-coordinate-plots-for-discrete-and-categorical-data-in-r-a-comparison/>
