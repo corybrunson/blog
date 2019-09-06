@@ -4,8 +4,11 @@
 # R metadata
 .Rproj.user
 
+# generated files
+supplementary/*.rds
+
 # deployment
 public
 
-# experimentation
-sandbox
+# ignore
+ignore
