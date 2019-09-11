@@ -18,6 +18,8 @@ title: Topics
 - instantiating the MIMIC-III database using dbplyr?
 - "nice" 3-layered / depth-3 covers of the plane
 - [power laws post](https://rpubs.com/CoryBrunson/proteome-powerlaw)
+- joint distribution model (follow-up)
+- varieties of triad closure in affiliation networks
 
 ## methodological technique
 
@@ -29,6 +31,8 @@ title: Topics
 - bipartite configuration random graph models
 - angle distance between PCAs on corresponding point clouds
 - enumerating simple paths with multiple links in igraph
+- mapper as an interpolation between covers and partitions
+- compare implementations of tetrachoric correlation coefficient
 
 ## personal curiosity
 
