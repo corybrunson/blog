@@ -15,7 +15,7 @@ title: Topics
 - scientometrics: predicting impact versus understanding forces / incentives
 - MIMIC-III code
 - fixed versus random effects
-- instantiating the MIMIC-III database using **dbplyr**?
+- instantiating the MIMIC-III database using dbplyr?
 - "nice" 3-layered / depth-3 covers of the plane
 - [power laws post](https://rpubs.com/CoryBrunson/proteome-powerlaw)
 
@@ -28,6 +28,7 @@ title: Topics
 - binomial regression of a Poisson random variable
 - bipartite configuration random graph models
 - angle distance between PCAs on corresponding point clouds
+- enumerating simple paths with multiple links in igraph
 
 ## personal curiosity
 
