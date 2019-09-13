@@ -5,7 +5,7 @@ author: ~
 date: 2019-09-13
 slug: alluvial-vs-sankey
 categories: [progress]
-tags: [flow diagrams,sankey diagrams,alluvial diagrams,visualization]
+tags: [flow diagrams,sankey diagrams,alluvial plots,visualization]
 ---
 
 ```{r knitr options, echo=FALSE}
