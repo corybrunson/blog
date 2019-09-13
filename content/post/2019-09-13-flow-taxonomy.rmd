@@ -3,7 +3,7 @@ draft: false
 title: defining and taxonomizing alluvial diagrams
 author: ~
 date: 2019-09-13
-slug: alluvial-vs-sankey
+slug: flow-taxonomy
 categories: [progress]
 tags: [flow diagrams,sankey diagrams,alluvial plots,visualization]
 ---
