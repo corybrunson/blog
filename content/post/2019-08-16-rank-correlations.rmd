@@ -130,7 +130,7 @@ A real-world example is provided by the [Quacquarelli Symonds Top University Ran
 [^unis]: This leaves us with only 38 universities, so my inferences must be taken with extreme caution!
 
 ```{r QS top university rankings}
-qswurus20 <- readRDS(here::here("sandbox/qswurus20.rds"))
+qswurus20 <- readRDS(here::here("supplementary/qswurus20.rds"))
 head(qswurus20)
 ```
 

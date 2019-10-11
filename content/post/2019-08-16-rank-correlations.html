@@ -100,7 +100,7 @@ A use case for this technique is a situation in which covariance data exist with
 <div id="example-rankings-of-universities" class="section level2">
 <h2>example: rankings of universities</h2>
 <p>A real-world example is provided by the <a href="https://www.topuniversities.com/qs-world-university-rankings/methodology">Quacquarelli Symonds Top University Rankings</a>, which include rankings of hundreds of world universities on six “metrics”: academic reputation, employer reputation, faculty–student ratio, citations per faculty, international faculty ratio, and international student ratio. QS weight these rankings differently in their overall assessment, but our analysis will compare the rankings to each other, so these weights are irrelevant. I restricted the data from the year 2020 to universities in the United States for which integer rankings (i.e. not “400+” placeholders) were available in all four years:<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a></p>
-<pre class="r"><code>qswurus20 &lt;- readRDS(here::here(&quot;sandbox/qswurus20.rds&quot;))
+<pre class="r"><code>qswurus20 &lt;- readRDS(here::here(&quot;supplementary/qswurus20.rds&quot;))
 head(qswurus20)</code></pre>
 <pre><code>##   year                                  institution size focus res age
 ## 1 2020  MASSACHUSETTS INSTITUTE OF TECHNOLOGY (MIT)    M    CO  VH   5
