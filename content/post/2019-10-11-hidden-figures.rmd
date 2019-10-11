@@ -1,0 +1,26 @@
+---
+draft: false
+title: my reaction to _Hidden Figures_
+author: ~
+date: 2019-10-11
+slug: hidden-figures
+categories: [curiosity]
+tags: [films,biographies,mathematicians]
+---
+
+_I'm a bit overwhelmed and a bit sick this month, and i didn't want to miss two fortnights in a row. I wrote up this reaction to seeing the film _Hidden Figures_ a couple of years ago on Facebook, and several of my friends liked it then, so i'm sharing it here. It's slightly edited. --Cory_
+
+_Hidden Figures_ was probably the best civil rights--focused film i've seen in a while---not to disparage _Selma_ or _The Butler_, but my personal taste is for greater subtlety. The movie is most impressive to me, though, as a mathematician biopic.
+
+In large part, this is because they did the math right, or as right as i would hope a movie to. Young Goble didn't, in an early establishing scene, just solve an equation on the chalkboard; she explained, clearly, what she had done and why it was a reasonable approach.[^1] After asserting her way into a closed-door (read: white men--only) board meeting, she calculated a re-entry trajectory on demand and, without boring into every detail, provided enough insight into the key steps to give her reasonably intelligent audience a sense of how she was doing it. Most entertainingly for me (though i don't know how historically accurately), she had the profound realization, not just on screen but out loud, that the (at the time) ancient curiosity of Euler's method could fuse (parabolic) launch/re-entry and (elliptical) orbital trajectories into a complete, cohesive course. I don't know that i ever would have thought to wonder whether i'd ever see (one step along) the momentous transition of applied mathematics from analytic to numerical dominance enacted as entertainment.
+
+To my mind, however, its principal achievement was in rejecting the now-entrenched Hollywood stereotype of the ostracized, neuroatypical, and/or disabled mathematical genius.[^2] This is not to suggest that ostracized, neuroatypical, and/or disabled mathematicians don't warrant at least their share of screen time, or that it's a shame that their biopics came first. What's problematic about the trend until now is that these traits have been presented as integral to the characters' mathematical interest or ability, which reinforces the myth that mathematical talent is aberrant (one that happily appears to be fading) and does a disservice to the achievements these people did in the face of exceptional challenges.
+
+Three brief examples: Leading this trend was _A Beautiful Mind_, which depicts Nash's schizophrenic hallucinations (which i've since learned were contrived, as his hallucinations were neither visual nor central to his illness) inspiring him to disengage from his work for a night out, at which he has an epiphany that leads to his famous equilibrium theorem. While i opted not to see _The Imitation Game_, i understand that the title encapsulates the parallel---absent from the biography but again contrived by the filmmakers---between Turing's reverse-engineering of the Enigma machine and his faltering attempts, from the autism spectrum, to decipher and emulate other people's behavior. And the central mathematical conflict in _The Man Who Knew Infinity_---between Ramanujan's reverence for the elegance of his own (sometimes false) assertions and his mentor Hardy's demand for rigorous proofs---is framed as a proxy for the volatile conflict between Hardy's stigmatized atheism and his student's stigmatized religion.
+
+While Goble faces serious social challenges, they are not conceived as somehow of a piece with her mathematical talent and work. Individual prejudice impedes her access to resources. Workplace segregation interferes with her performance. Structural discrimination prevents her colleagues from advancing their careers. These obstacles are also externally imposed; Goble herself is mature, competent, and graceful, and the film sees her through an emotional trajectory---making time for her children, falling in love, navigating an exciting and stressful work environment---that is refreshingly unrelated to her genius. And it's not like Goble's typicality was essential to this. None of Nash's, Turing's, Ramanujan's, and Hardy's stories called for the gimmicking they received.
+
+To the extent that future biopics about mathematicians eschew such gimmicks, they'll owe some credit to _Hidden Figures_.
+
+[^1]: She solved a quartic polynomial, presented as a product of quadratics, by factoring each factor into two binomials.
+[^2]: This is, of course, based on my own impressions and expectations.

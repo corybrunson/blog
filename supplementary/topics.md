@@ -37,7 +37,6 @@ title: Topics
 ## personal curiosity
 
 - tidytuesday
-- "Hidden Figures"
 - polyamory books on Goodreads
 - CT state funding of UConn & UConn Health
 - journalism subscriptions
