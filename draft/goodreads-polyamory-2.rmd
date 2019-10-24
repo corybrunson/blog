@@ -1,0 +1,188 @@
+---
+draft: true
+title: the dimensions of (abstracted) polyamory literature, revisited
+author: ~
+date: 
+slug: goodreads-polyamory-2
+categories: [curiosity]
+tags: [books,polyamory,principal components analysis,biplot]
+---
+
+```{r knitr options, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.height = 3, fig.width = 8
+)
+```
+
+```{r, eval=FALSE}
+polybooks_pca_biplot_u <- polybooks_pca %>%
+  fortify(include = "all") %>%
+  slice(chull(select(., 1:2))) %>%
+  ggbiplot(aes(x = PC1, y = PC2)) +
+  theme_bw() +
+  geom_u_point(data = polybooks_pca, alpha = .5) +
+  geom_u_point(color = "red") +
+  geom_u_label_repel(aes(label = short_title), color = "red", alpha = .75)
+print(polybooks_pca_biplot_u)
+polybooks_pca_biplot_v <- polybooks_pca %>%
+  fortify(include = "all") %>%
+  filter(.matrix == "v") %>%
+  mutate_at(vars(starts_with("SC")), funs(. * 360)) %>%
+  slice(chull(select(., 1:2))) %>%
+  ggbiplot(aes(x = PC1, y = PC2)) +
+  theme_bw() +
+  geom_u_point(data = polybooks_pca, alpha = .5) +
+  geom_v_vector(color = "blue") +
+  geom_v_label_repel(aes(label = word), color = "blue", alpha = .75)
+print(polybooks_pca_biplot_v)
+```
+
+```{r, eval=FALSE}
+# cluster sample
+# https://github.com/tidyverse/dplyr/issues/361#issuecomment-284305359
+cluster_sample_n <- function(
+  tbl, size, replace = FALSE, weight = NULL, average = FALSE
+) {
+  weight <- rlang::eval_tidy(enquo(weight), tbl)
+  wt_fun <- if (average) mean else sum
+  grps <- unlist(lapply(groups(tbl), as.character))
+  summ <- summarize(tbl, .weight = if (is.null(weight)) 1 else wt_fun(weight))
+  keep <- sample_n(summ, size = size, replace = replace, weight = .weight)
+  group_by_at(left_join(select(keep, -.weight), tbl, by = grps), .vars = grps)
+}
+cluster_sample_frac <- function(
+  tbl, size, replace = FALSE, weight = NULL, average = FALSE
+) {
+  weight <- rlang::eval_tidy(enquo(weight), tbl)
+  wt_fun <- if (average) mean else sum
+  grps <- unlist(lapply(groups(tbl), as.character))
+  summ <- summarize(tbl, .weight = if (is.null(weight)) 1 else wt_fun(weight))
+  keep <- sample_frac(summ, size = size, replace = replace, weight = .weight)
+  group_by_at(left_join(select(keep, -.weight), tbl, by = grps), .vars = grps)
+}
+```
+
+```{r, eval=FALSE}
+# latent Dirichlet allocation
+
+library(topicmodels)
+
+polybooks_lda <- polybooks_wordcounts %>%
+  cast_dtm(title, word, n) %>%
+  LDA(k = 3) %>%
+  tidy()
+polybooks_lda %>%
+  group_by(term) %>%
+  cluster_sample_n(4)
+
+polybooks_top <- polybooks_lda %>%
+  group_by(topic) %>%
+  top_n(6, beta) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, beta))
+polybooks_top %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+
+# k = 2
+polybooks_lda %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  spread(topic, beta) %>%
+  filter(topic1 > 1e-6 | topic2 > 1e-6) %>%
+  mutate(log_ratio = log(topic1 / topic2)) %>%
+  top_n(12, abs(log_ratio)) %>%
+  mutate(term = fct_reorder(term, log_ratio)) %>%
+  ggplot(aes(x = term, y = log_ratio)) +
+  geom_col() +
+  coord_flip()
+# k = 3
+polybooks_lda %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  spread(topic, beta) %>%
+  filter(topic1 > 1e-6 | topic2 > 1e-6 | topic3 > 1e-6) %>%
+  mutate(
+    topic12 = log(topic1 / topic2),
+    topic13 = log(topic1 / topic3),
+    topic23 = log(topic2 / topic3)
+  ) %>%
+  select(-matches("topic[0-9]$")) %>%
+  gather(key = "topic_pair", value = "log_ratio", topic12:topic23) %>%
+  group_by(topic_pair) %>%
+  #top_n(12, abs(log_ratio)) %>%
+  {bind_rows(top_n(., 6, log_ratio), top_n(., 6, -log_ratio))} %>%
+  ungroup() %>%
+  ggplot(aes(x = term, y = log_ratio)) +
+  facet_wrap(~ topic_pair, scales = "free_y") +
+  geom_col() + coord_flip()
+```
+
+```{r, eval=FALSE}
+# cosine similarity based on common words
+polybooks_wordusages %>%
+  #mutate(value = log(n+1)) %>%
+  mutate(value = as.integer(n > 0)) %>%
+  select(title, id, lists, genres, word, value) %>%
+  mutate(word = paste0(word, "_")) %>%
+  spread(word, value, fill = 0) %>%
+  identity() -> polybooks_worddata
+
+library(logisticPCA)
+
+# logistic singular value decomposition
+polybooks_lsvd <- polybooks_worddata %>%
+  select(-title, -lists, -genres) %>%
+  as.matrix() %>%
+  logisticSVD(k = 2) %>%
+  as_tbl_ord() %>%
+  bind_cols_u(select(polybooks_worddata, title, lists, genres)) %>%
+  mutate_u(short_title = str_replace(title, "(: .+$)|( \\(.+$)", "")) %>%
+  bind_cols_v(word = names(select(polybooks_worddata, -(1:3)))) %>%
+  mutate_v(word = gsub("\\_$", "", word))
+
+polybooks_lsvd_biplot_u <- polybooks_lsvd %>%
+  fortify(include = "all") %>%
+  slice(chull(select(., 1:2))) %>%
+  ggbiplot(aes(x = SC1, y = SC2)) +
+  theme_bw() +
+  geom_u_point(data = polybooks_lsvd, alpha = .5) +
+  geom_u_point(color = "red") +
+  geom_u_label_repel(aes(label = short_title), color = "red", alpha = .75)
+print(polybooks_lsvd_biplot_u)
+polybooks_lsvd_biplot_v <- polybooks_lsvd %>%
+  fortify(include = "all") %>%
+  filter(.matrix == "v") %>%
+  mutate_at(vars(starts_with("SC")), funs(. * 360)) %>%
+  slice(chull(select(., 1:2))) %>%
+  ggbiplot(aes(x = SC1, y = SC2)) +
+  theme_bw() +
+  geom_u_point(data = polybooks_lsvd, alpha = .5) +
+  geom_v_vector(color = "blue") +
+  geom_v_label_repel(aes(label = word), color = "blue", alpha = .75)
+print(polybooks_lsvd_biplot_v)
+
+top_u <- polybooks_lsvd %>%
+  #get_u() %>%
+  fortify(include = "all") %>%
+  filter(.matrix == "u") %>%
+  slice(chull(select(., 1:2)))
+top_v <- polybooks_lsvd %>%
+  #get_v() %>%
+  fortify(include = "all") %>%
+  filter(.matrix == "v") %>%
+  mutate_at(vars(starts_with("SC")), funs(. * 360)) %>%
+  slice(chull(select(., 1:2)))
+polybooks_lsvd_biplot_uv <- polybooks_lsvd %>%
+  ggbiplot(aes(x = SC1, y = SC2)) +
+  theme_bw() +
+  geom_u_point(alpha = .5) +
+  geom_v_vector(data = top_v, color = "blue") +
+  geom_v_label_repel(data = top_v,
+                     aes(label = word), color = "blue", alpha = .75) +
+  geom_u_point(data = top_u, color = "red") +
+  geom_u_label_repel(data = top_u,
+                     aes(label = short_title), color = "red", alpha = .75)
+print(polybooks_lsvd_biplot_uv)
+```

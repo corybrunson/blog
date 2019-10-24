@@ -9,10 +9,7 @@ tags: [books,polyamory,web scraping,principal components analysis,biplot]
 ---
 
 ```{r knitr options, echo=FALSE}
-knitr::opts_chunk$set(
-  message = FALSE,
-  fig.height = 3, fig.width = 8
-)
+knitr::opts_chunk$set(message = FALSE)
 ```
 
 I've gained immensely from reading the handful of non-fiction books on polyamory i've made time to, including Dossie Easton and Janet Hardy's _The Ethical Slut_ and Franklin Veaux and Eve Rickert's _More Than Two_. While i've identified as poly since i discovered the term in grad school, i exhibit at least my share of emotional immaturity, and in addition to actual experience building healthy relationships i know i'd benefit from funneling a bit more of this literature into my reading queue. So, with a small group of friends (which has reduced for the time being to someone i'm dating plus myself), i recently started a poly/kink book club.
@@ -27,251 +24,121 @@ The post and [its sequel](https://maraaverick.rbind.io/2017/10/goodreads-part-2/
 
 ## scrape
 
-It would be, let's say, impractical to manually search out books with explicitly poly content or themes, and even then i'd likely miss a bunch whose descriptions don't let on too clearly. Fortunately, Goodreads allows users both to curate thematic lists _and_ to tag their lists with keywords! For example, [here is the collection of lists tagged "polyamory"](https://www.goodreads.com/list/tag/polyamory), numbering in the dozens. Helpfully, the lists span genres, including fiction, young adult, memoirs, specific configurations like triads, and space opera (natch). Less helpfully, they also range more broadly, for example exotica, sex positivity, and love. On the whole, though, the tag seems like a good candidate for a one-off analysis.
+It would be, let's say, impractical to manually search out books with explicitly poly content or themes, and even then i'd likely miss a bunch whose descriptions don't let on too clearly. Fortunately, Goodreads allows users both to curate thematic lists _and_ to tag their lists with keywords! [Here is the collection of lists tagged "polyamory"](https://www.goodreads.com/list/tag/polyamory), numbering in the dozens. Helpfully, the lists span genres, including fiction, young adult, memoirs, specific configurations like triads, and space opera (natch). Less helpfully, they also range more broadly in topic and theme, for example exotica, sex positivity, and love. On the whole, though, the tag seems like a good candidate for a one-off analysis.
 
-There are other relevant tags, of course, like ["open-relationships"](https://www.goodreads.com/list/tag/open-relationships). But the others i've found turn out to be far less sensitive and often less specific. For example, ["nonmonogamy"](https://www.goodreads.com/list/tag/nonmonogamy) turns up two relevant lists but ["non monogamy"](https://www.goodreads.com/list/tag/non-monogamy) turns up a third, and ["swinging"](https://www.goodreads.com/list/tag/swinging) yields four lists, of which one is a conspicuous false positive. For simplicity, i'll stick with the "polyamory" tag.
+There are other relevant tags, of course, like ["open-relationships"](https://www.goodreads.com/list/tag/open-relationships). But the others i've found turn out to be far less sensitive and often less specific. For example, ["nonmonogamy"](https://www.goodreads.com/list/tag/nonmonogamy) turns up two relevant lists but ["non monogamy"](https://www.goodreads.com/list/tag/non-monogamy) turns up a third, and ["swinging"](https://www.goodreads.com/list/tag/swinging) yields four lists, of which one is a conspicuous false positive. For simplicity, i'll stick with the "polyamory" tag. This is something to revisit if the results aren't facially relevant.
 
-My code (in [the supplementary folder](../supplementary/)) scrapes first the book URLs from each list page (`polyamory_list`), then metadata from each book page (`polyamory_books`): title, authors, genres, and the book description. While the authors and title serve as identifiers and the genres as annotations, the descriptions constitute the raw material on which i'll perform a text analysis. The full texts of the books themselves are not so freely available,[^termfreq] the titles are unlikely to reliably encode recurring features, and the genres are likely too few to discriminate except between broad categories.
+My code (in [the supplementary folder](../supplementary/)) scrapes first the list URLs from the meta-list (`polyamory_listopia`), then the book URLs from each list page (`polyamory_lists`), and finally metadata from each book page (`polyamory_books`): title, authors, genres, and the book description. While the authors and title serve as identifiers and the genres as annotations, the descriptions constitute the raw material on which i'll perform a text analysis. The full texts of the books themselves are not so freely available,[^termfreq] the titles are unlikely to reliably encode recurring features, and the genres are likely too few to discriminate except between broad categories.
 
 [^termfreq]: Though making word frequency data publicly available would presumably be straightforward to do and have if anything a positive impact on sales.
 
+It's important to note that there are two tiers of redundancy in the book list, only one of which i eliminate. First, the same Goodreads _entry_[^editions] may appear in multiple lists; second, the same _book_ may have been erroneously entered into Goodreads multiple times (which may appear in different lists or even the same list). It would require a few hours of manual curation to resolve the latter problem,[^combine] and i haven't put in that time here; but the first problem is easily handled using `group_by()` and `summarize()`.
+
+[^combine]: I make a habit of posting "combine requests" for the Goodreads Librarians Group whenever i come across such instances)
+
+[^editions]: An entry may have multiple editions, but these never introduced redundancies in my workflow.
+
 ## crunch
 
-```{r}
+Here is the book list obtained from the scraping script, slightly tidied:
+
+```{r read in book list}
 library(tidyverse)
-library(tidytext)
-library(logisticPCA)
-library(ordr)
-```
-
-```{r}
-polyamory_booklist <-
-  read_rds(here::here("supplementary/goodreads-polyamory-booklist.rds"))
-```
-
-
-
-Copied from original file:
-
-```{r, eval=FALSE}
-# use common words in descriptions to coordinate books
-
-polyamory_booklist <- polyamory_booklist %>%
+read_rds(here::here("supplementary/goodreads-polyamory-booklist.rds")) %>%
   ungroup() %>%
-  select(title = title_page, lists, genres, description)
+  select(title = title_page, id = link, lists, genres, description) %>%
+  mutate(short_title = str_replace(title, "(: .+$)|( \\(.+$)", "")) %>%
+  mutate(id = str_replace(id, "/book/show/([0-9]+)[^0-9].*$", "\\1")) %>%
+  mutate(id = as.integer(id)) %>%
+  print() -> polyamory_booklist
+```
 
+(Some of the duplicate entries are evident.) My goal here is to represent these `r format(nrow(polyamory_booklist), big.mark = ",")` book entries as points (or vectors) in some low-dimensional space, based on the co-occurrence of words in their descriptions. Ideally, the coordinate dimenisons of this space will correspond to identifiable features that will help characterize the dimensions _and_ allow the dimensions to characterize individual books in turn. If the number of dimensions is low enough, then it will also be possible to visualize the point cloud and coordinate vectors.
+
+### word counts
+
+Adapting a workflow from [the tidytext book](https://www.tidytextmining.com/), i first "unnest" the book list---in [the tidyr sense](https://tidyr.tidyverse.org/reference/unnest.html), except using a tidytext method specific to strings of written language. "Stop" words are articles, prepositions, and other words that add little to no value to a text analysis; instances of them in the unnested data are excluded via an [anti-join](https://dplyr.tidyverse.org/reference/join.html). Finally, i count the number of times each word is used in each description as a new variable $n$.
+
+```{r count word frequencies}
+library(tidytext)
 # word counts within books
-polybooks_wordcounts <- polyamory_booklist %>%
+polyamory_booklist %>%
   mutate(clean_descr = str_replace_all(description, "[^[:alpha:]\\s]", " ")) %>%
   mutate(clean_descr = str_trim(clean_descr)) %>%
   select(-description) %>%
   unnest_tokens(word, clean_descr) %>%
-  distinct() %>%
   anti_join(stop_words, by = "word") %>%
-  add_count(title, word, sort = TRUE)
+  count(title, short_title, id, lists, genres, word, name = "n") %>%
+  print() -> polybooks_wordcounts
+```
 
-# removal of stopwords
+A couple more word counts that will be useful downstream are the number $d$ of book descriptions that use each word and the total number $m$ of uses across the corpus.
 
+```{r count word uses}
 # word usage across books
-polybooks_wordusages <- polybooks_wordcounts %>%
+polybooks_wordcounts %>%
   left_join(
     polybooks_wordcounts %>%
-      select(title, word, n) %>%
-      distinct() %>%
-      add_count(word, name = "nn"),
-    by = c("title", "word", "n")
+      group_by(word) %>%
+      summarize(d = n(), m = sum(n)),
+    by = c("word")
   ) %>%
-  filter(nn >= 12) %>%
-  arrange(desc(nn), desc(n))
-# number of words
-polybooks_wordusages %>%
-  select(word) %>%
-  distinct() %>%
-  nrow()
-
-# cosine similarity based on common words
-polybooks_worddata <- polybooks_wordusages %>%
-  #mutate(value = log(n+1)) %>%
-  mutate(value = as.integer(n > 0)) %>%
-  select(title, lists, genres, word, value) %>%
-  mutate(word = paste0(word, "_")) %>%
-  spread(word, value, fill = 0)
-
-# logistic singular value decomposition
-polybooks_lsvd <- polybooks_worddata %>%
-  select(-title, -lists, -genres) %>%
-  as.matrix() %>%
-  logisticSVD(k = 2) %>%
-  as_tbl_ord() %>%
-  bind_cols_u(select(polybooks_worddata, title, lists, genres)) %>%
-  mutate_u(short_title = str_replace(title, "(: .+$)|( \\(.+$)", "")) %>%
-  bind_cols_v(word = names(select(polybooks_worddata, -(1:3)))) %>%
-  mutate_v(word = gsub("\\_$", "", word))
-
-polybooks_lsvd_biplot_u <- polybooks_lsvd %>%
-  fortify(include = "all") %>%
-  slice(chull(select(., 1:2))) %>%
-  ggbiplot(aes(x = SC1, y = SC2)) +
-  theme_bw() +
-  geom_u_point(data = polybooks_lsvd, alpha = .5) +
-  geom_u_point(color = "red") +
-  geom_u_label_repel(aes(label = short_title), color = "red", alpha = .75)
-print(polybooks_lsvd_biplot_u)
-polybooks_lsvd_biplot_v <- polybooks_lsvd %>%
-  fortify(include = "all") %>%
-  filter(.matrix == "v") %>%
-  mutate_at(vars(starts_with("SC")), funs(. * 360)) %>%
-  slice(chull(select(., 1:2))) %>%
-  ggbiplot(aes(x = SC1, y = SC2)) +
-  theme_bw() +
-  geom_u_point(data = polybooks_lsvd, alpha = .5) +
-  geom_v_vector(color = "blue") +
-  geom_v_label_repel(aes(label = word), color = "blue", alpha = .75)
-print(polybooks_lsvd_biplot_v)
-
-top_u <- polybooks_lsvd %>%
-  #get_u() %>%
-  fortify(include = "all") %>%
-  filter(.matrix == "u") %>%
-  slice(chull(select(., 1:2)))
-top_v <- polybooks_lsvd %>%
-  #get_v() %>%
-  fortify(include = "all") %>%
-  filter(.matrix == "v") %>%
-  mutate_at(vars(starts_with("SC")), funs(. * 360)) %>%
-  slice(chull(select(., 1:2)))
-polybooks_lsvd_biplot_uv <- polybooks_lsvd %>%
-  ggbiplot(aes(x = SC1, y = SC2)) +
-  theme_bw() +
-  geom_u_point(alpha = .5) +
-  geom_v_vector(data = top_v, color = "blue") +
-  geom_v_label_repel(data = top_v,
-                     aes(label = word), color = "blue", alpha = .75) +
-  geom_u_point(data = top_u, color = "red") +
-  geom_u_label_repel(data = top_u,
-                     aes(label = short_title), color = "red", alpha = .75)
-print(polybooks_lsvd_biplot_uv)
+  filter(m >= 12) %>%
+  arrange(desc(d), desc(n)) %>%
+  print() -> polybooks_wordusages
 ```
 
-```{r, eval=FALSE}
-# latent Dirichlet allocation
+`r format(nrow(distinct(select(polybooks_wordusages, word))), big.mark = ",")` distinct words appear in these descriptions (omitting the stop words).
+Happily, the most prevalent (and, it turns out, most frequent) word in these descriptions is "love". <83
 
-# cluster sample
-# https://github.com/tidyverse/dplyr/issues/361#issuecomment-284305359
-cluster_sample_n <- function(
-  tbl, size, replace = FALSE, weight = NULL, average = FALSE
-) {
-  weight <- rlang::eval_tidy(enquo(weight), tbl)
-  wt_fun <- if (average) mean else sum
-  grps <- unlist(lapply(groups(tbl), as.character))
-  summ <- summarize(tbl, .weight = if (is.null(weight)) 1 else wt_fun(weight))
-  keep <- sample_n(summ, size = size, replace = replace, weight = .weight)
-  group_by_at(left_join(select(keep, -.weight), tbl, by = grps), .vars = grps)
-}
-cluster_sample_frac <- function(
-  tbl, size, replace = FALSE, weight = NULL, average = FALSE
-) {
-  weight <- rlang::eval_tidy(enquo(weight), tbl)
-  wt_fun <- if (average) mean else sum
-  grps <- unlist(lapply(groups(tbl), as.character))
-  summ <- summarize(tbl, .weight = if (is.null(weight)) 1 else wt_fun(weight))
-  keep <- sample_frac(summ, size = size, replace = replace, weight = .weight)
-  group_by_at(left_join(select(keep, -.weight), tbl, by = grps), .vars = grps)
-}
+### relative frequencies
 
-library(topicmodels)
-polybooks_lda <- polybooks_wordcounts %>%
-  cast_dtm(title, word, n) %>%
-  LDA(k = 3) %>%
-  tidy()
-polybooks_lda %>%
-  group_by(term) %>%
-  cluster_sample_n(4)
+Its ubiquity makes "love" unlikely to be an effective token for the purpose of mapping this book collection in coordinate space: If a feature describes everything, then it describes nothing. The traditional usefulness weighting on words is instead the _term frequency--inverse document frequency_, or _tf-idf_. This is the product of two quotients: the term frequency $\frac{n}{N}$ for a given book, where $N$ is the number of words in its description; and (the natural logarithm of) the inverse of the document frequency $\frac{d}{D}$, where $D$ is the number of books (descriptions) in the corpus. The tidytext package provides a helper function for this step, `bind_tf_idf()`, which obviates the previous chunk. Additionally i've filtered out the less discriminating words (having maximum td-idf at most $0.1$):
 
-polybooks_top <- polybooks_lda %>%
-  group_by(topic) %>%
-  top_n(6, beta) %>%
-  ungroup() %>%
-  mutate(term = reorder(term, beta))
-polybooks_top %>%
-  ggplot(aes(term, beta, fill = factor(topic))) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~ topic, scales = "free") +
-  coord_flip()
-
-# k = 2
-polybooks_lda %>%
-  mutate(topic = paste0("topic", topic)) %>%
-  spread(topic, beta) %>%
-  filter(topic1 > 1e-6 | topic2 > 1e-6) %>%
-  mutate(log_ratio = log(topic1 / topic2)) %>%
-  top_n(12, abs(log_ratio)) %>%
-  mutate(term = fct_reorder(term, log_ratio)) %>%
-  ggplot(aes(x = term, y = log_ratio)) +
-  geom_col() +
-  coord_flip()
-# k = 3
-polybooks_lda %>%
-  mutate(topic = paste0("topic", topic)) %>%
-  spread(topic, beta) %>%
-  filter(topic1 > 1e-6 | topic2 > 1e-6 | topic3 > 1e-6) %>%
-  mutate(
-    topic12 = log(topic1 / topic2),
-    topic13 = log(topic1 / topic3),
-    topic23 = log(topic2 / topic3)
-  ) %>%
-  select(-matches("topic[0-9]$")) %>%
-  gather(key = "topic_pair", value = "log_ratio", topic12:topic23) %>%
-  group_by(topic_pair) %>%
-  #top_n(12, abs(log_ratio)) %>%
-  {bind_rows(top_n(., 6, log_ratio), top_n(., 6, -log_ratio))} %>%
-  ungroup() %>%
-  ggplot(aes(x = term, y = log_ratio)) +
-  facet_wrap(~ topic_pair, scales = "free_y") +
-  geom_col() + coord_flip()
-```
-
-```{r, eval=FALSE}
-# tf-idf
-
-# tf-idf
-polybooks_tfidf <- polybooks_wordcounts %>%
-  bind_tf_idf(word, title, n) %>%
+```{r tf-idf}
+polybooks_wordcounts %>%
+  bind_tf_idf(word, id, n) %>%
   group_by(word) %>% filter(max(tf_idf) > .1) %>% ungroup() %>%
-  select(title, lists, genres, word, tf_idf)
-polybooks_worddata <- polybooks_tfidf %>%
-  mutate(word = paste0(word, "_")) %>%
-  spread(word, tf_idf, fill = 0)
+  select(title, short_title, id, lists, genres, word, tf_idf) %>%
+  print() -> polybooks_tfidf
+```
 
+I'll use these remaining `r format(length(unique(polybooks_tfidf$word)), big.mark = ",")` words to make a first pass at gauging the dimensionality of the corpus and visualizing the books and features, using classical PCA. This requires widening the table into a classical data matrix having one row per book, one column per word, and log-transformed tf-idf values (to better mimic normality).
+
+```{r pca}
+# widen
+polybooks_tfidf_wide <- polybooks_tfidf %>%
+  mutate(log_tf_idf = log(tf_idf)) %>%
+  select(-tf_idf) %>%
+  spread(word, log_tf_idf, fill = 0)
+library(ordr)
 # principal components analysis
-polybooks_pca <- polybooks_worddata %>%
-  select(-title, -lists, -genres) %>%
+polybooks_tfidf_wide %>%
+  select(-title, -short_title, -lists, -genres) %>%
+  column_to_rownames("id") %>%
   as.matrix() %>%
   prcomp() %>%
   as_tbl_ord() %>%
-  bind_cols_u(select(polybooks_worddata, title, lists, genres)) %>%
-  mutate_u(short_title = str_replace(title, "(: .+$)|( \\(.+$)", "")) %>%
-  bind_cols_v(word = names(select(polybooks_worddata, -(1:3)))) %>%
-  mutate_v(word = gsub("\\_$", "", word))
+  augment() %>%
+  bind_cols_u(select(polybooks_tfidf_wide, short_title, lists, genres)) %>%
+  print() -> polybooks_pca
+```
 
-polybooks_pca_biplot_u <- polybooks_pca %>%
-  fortify(include = "all") %>%
-  slice(chull(select(., 1:2))) %>%
-  ggbiplot(aes(x = PC1, y = PC2)) +
-  theme_bw() +
-  geom_u_point(data = polybooks_pca, alpha = .5) +
-  geom_u_point(color = "red") +
-  geom_u_label_repel(aes(label = short_title), color = "red", alpha = .75)
-print(polybooks_pca_biplot_u)
-polybooks_pca_biplot_v <- polybooks_pca %>%
-  fortify(include = "all") %>%
-  filter(.matrix == "v") %>%
-  mutate_at(vars(starts_with("SC")), funs(. * 360)) %>%
-  slice(chull(select(., 1:2))) %>%
-  ggbiplot(aes(x = PC1, y = PC2)) +
-  theme_bw() +
-  geom_u_point(data = polybooks_pca, alpha = .5) +
-  geom_v_vector(color = "blue") +
-  geom_v_label_repel(aes(label = word), color = "blue", alpha = .75)
-print(polybooks_pca_biplot_v)
+```{r pca scree plot, fig.height=4, fig.width=8}
+polybooks_pca %>%
+  fortify(.matrix = "coord") %>%
+  filter(.prop_var > .01) %>%
+  ggplot(aes(x = .name, y = .prop_var)) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "Proportion of variance")
+```
+
+```{r pca biplot, fig.height=6, fig.width=6, fig.align='center'}
+ggbiplot(polybooks_pca) +
+  geom_u_point(alpha = .5) +
+  geom_u_point(stat = "chull", color = "red") +
+  geom_u_label_repel(
+    stat = "chull", aes(label = short_title),
+    color = "red", alpha = .75
+  )
 ```

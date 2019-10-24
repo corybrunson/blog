@@ -1,9 +1,8 @@
 Sys.setenv(GOODREADS_KEY = readline("Enter Goodreads API key: "))
 
+
 library(rgoodreads)
 library(httr)
-library(tidyverse)
-library(rvest)
 
 # apply goodreads site prefix
 prefix <- function(x) str_c("https://www.goodreads.com", x)
@@ -14,6 +13,9 @@ rm_ws <- function(x) {
     gsub(pattern = "[[:space:]]+", replace = " ") %>%
     gsub(pattern = "(^ )|( $)", replace = "")
 }
+
+library(tidyverse)
+library(rvest)
 
 # list of book lists
 polyamory_listopia <- "/list/tag/polyamory" %>%
@@ -66,7 +68,7 @@ book_info <- function(book_link) {
 }
 
 # tibbulate list books
-polyamory_list <- tibble()
+polyamory_lists <- tibble()
 n_lists <- nrow(polyamory_listopia)
 pb <- progress_estimated(n_lists)
 for (i in 1:n_lists) {
@@ -74,26 +76,27 @@ for (i in 1:n_lists) {
   list_i <- polyamory_listopia$link[i] %>%
     list_books() %>%
     mutate(list = polyamory_listopia$list[i])
-  polyamory_list <- bind_rows(polyamory_list, list_i)
+  polyamory_lists <- bind_rows(polyamory_lists, list_i)
 }
-polyamory_list <- polyamory_list %>%
+polyamory_lists %>%
   group_by(title, link) %>%
-  summarize(lists = paste(list, collapse = "|"))
+  summarize(lists = paste(list, collapse = "|")) %>%
+  print() -> polyamory_lists
 
 # tibbulate book details
 polyamory_books <- tibble()
-n_books <- nrow(polyamory_list)
+n_books <- nrow(polyamory_lists)
 pb <- progress_estimated(n_books)
 for (i in 1:n_books) {
   pb$pause(1)$tick()$print()
-  book_i <- polyamory_list$link[i] %>%
+  book_i <- polyamory_lists$link[i] %>%
     book_info()
   polyamory_books <- bind_rows(polyamory_books, book_i)
 }
 
 # combine list and book info
 polyamory_booklist <- bind_cols(
-  rename(polyamory_list, title_ref = title),
+  rename(polyamory_lists, title_ref = title),
   rename(polyamory_books, title_page = title)
 )
 write_rds(
