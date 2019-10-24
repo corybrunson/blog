@@ -1,7 +1,4 @@
----
-draft: false
-title: Topics
----
+# Topics
 
 ## professional development
 
@@ -45,3 +42,5 @@ title: Topics
 - alluvial diagram of CT tiered beaches
 - factor analysis of ecopanel data
 - tokusatsu collaboration network
+- trigonometric and logarithmic functions and quadrature problems
+- using csvsimple to import CSVs as tables in Pandoc
