@@ -1,0 +1,223 @@
+---
+draft: true
+title: the dimensions of (abstracted) polyamory literature
+author: ~
+date: 2019-10-25
+slug: goodreads-polyamory
+categories: [curiosity]
+tags: [books,polyamory,web scraping,principal components analysis,biplot]
+---
+
+
+
+<p>I’ve gained immensely from reading the handful of non-fiction books on polyamory i’ve made time to, including Dossie Easton and Janet Hardy’s <em>The Ethical Slut</em> and Franklin Veaux and Eve Rickert’s <em>More Than Two</em>. While i’ve identified as poly since i discovered the term in grad school, i exhibit at least my share of emotional immaturity, and in addition to actual experience building healthy relationships i know i’d benefit from funneling a bit more of this literature into my reading queue. So, with a small group of friends (which has reduced for the time being to someone i’m dating plus myself), i recently started a poly/kink book club.</p>
+<p>From the start, i intended to slide fiction, fantasy/scifi, memoir, anthropology, history, and any other genres i could discover onto our shelf, to accrue a well-rounded appreciation for what was available. Though this of course put me to wondering how i could even learn the contours of the poly literature, in order to ensure that i sampled widely from it! Fortunes of timing provided me with three excellent resources:</p>
+<ul>
+<li><a href="https://www.goodreads.com/user/show/57466005">a Goodreads account</a>;</li>
+<li><a href="https://maraaverick.rbind.io/2017/08/goodreads-part-i-rgoodreads/">a blog tutorial</a> by Mara Averick on using R packages to scrape and crunch Goodreads data; and</li>
+<li><a href="https://www.goodreads.com/list/tag/polyamory">a book</a> by Julia Silge and David Robinson on doing text mining in tidyverse style.</li>
+</ul>
+<p>The tutorial and <a href="https://maraaverick.rbind.io/2017/10/goodreads-part-2/">its sequel</a> will get you up to speed; i’ll outline my web-scraping script and focus mostly on the analysis.</p>
+<div id="scrape" class="section level2">
+<h2>scrape</h2>
+<p>It would be, let’s say, impractical to manually search out books with explicitly poly content or themes, and even then i’d likely miss a bunch whose descriptions don’t let on too clearly. Fortunately, Goodreads allows users both to curate thematic lists <em>and</em> to tag their lists with keywords! <a href="https://www.goodreads.com/list/tag/polyamory">Here is the collection of lists tagged “polyamory”</a>, numbering in the dozens. Helpfully, the lists span genres, including fiction, young adult, memoirs, specific configurations like triads, and space opera (natch). Less helpfully, they also range more broadly in topic and theme, for example exotica, sex positivity, and love. On the whole, though, the tag seems like a good candidate for a one-off look.</p>
+<p>There are other relevant tags, of course, like <a href="https://www.goodreads.com/list/tag/open-relationships">“open-relationships”</a>. But the others i’ve found turn out to be far less sensitive and often less specific. For example, <a href="https://www.goodreads.com/list/tag/nonmonogamy">“nonmonogamy”</a> turns up two relevant lists but <a href="https://www.goodreads.com/list/tag/non-monogamy">“non monogamy”</a> turns up a third, and <a href="https://www.goodreads.com/list/tag/swinging">“swinging”</a> yields four lists, of which one is a conspicuous false positive. For simplicity, i’ll stick with the “polyamory” tag. This is something i can revisit if the results aren’t facially relevant.</p>
+<p>My code (in <a href="../supplementary/">the supplementary folder</a>) scrapes first the list URLs from the meta-list (<code>polyamory_listopia</code>), then the book URLs from each list page (<code>polyamory_lists</code>), and finally metadata from each book page (<code>polyamory_books</code>): title, link, author(s), genre(s), and book description. While the authors and title serve as identifiers and the genres may serve as annotations, the descriptions constitute the raw material on which i’ll perform a text analysis. (The full texts of the books themselves are not so freely available,<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> the titles are unlikely to reliably encode recurring features, and the genres are likely too few to discriminate except between broad categories.)</p>
+<p>It’s important to note that there are two tiers of redundancy in the book list, only one of which i eliminate. First, the same Goodreads <em>entry</em><a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> may appear in multiple lists; second, the same <em>book</em> may have been erroneously entered into Goodreads multiple times (which may appear in different lists or even the same list). It would require a few hours of manual curation to resolve the latter problem,<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a> and i haven’t put in that time here; but the first problem is easily handled using <code>group_by()</code> and <code>summarize()</code>.</p>
+</div>
+<div id="crunch" class="section level2">
+<h2>crunch</h2>
+<p>Here is the book list obtained from the scraping script, slightly tidied, using the identifying string of the URL as a unique identifier:</p>
+<pre class="r"><code>library(tidyverse)
+read_rds(here::here(&quot;supplementary/goodreads-polyamory-booklist.rds&quot;)) %&gt;%
+  ungroup() %&gt;%
+  select(title = title_page, id = link, lists, genres, description) %&gt;%
+  mutate(short_title = str_replace(title, &quot;(: .+$)|( \\(.+$)&quot;, &quot;&quot;)) %&gt;%
+  mutate(id = str_replace(id, &quot;/book/show/([0-9]+)[^0-9].*$&quot;, &quot;\\1&quot;)) %&gt;%
+  mutate(id = as.integer(id)) %&gt;%
+  print() -&gt; polyamory_booklist</code></pre>
+<pre><code>## # A tibble: 1,179 x 6
+##    title           id lists      genres      description     short_title   
+##    &lt;chr&gt;        &lt;int&gt; &lt;chr&gt;      &lt;chr&gt;       &lt;chr&gt;           &lt;chr&gt;         
+##  1 100 Love …  1.13e4 Books on … Poetry|Cla… Against the ba… 100 Love Sonn…
+##  2 199 Ways …  1.61e7 Sex, Love… &quot;&quot;          199 Ways To Im… 199 Ways To I…
+##  3 30th Cent…  3.53e7 Ménage Po… Science Fi… CAPTAIN JENNIF… 30th Century  
+##  4 A + E 4ev…  1.24e7 The Most … Sequential… Asher Machnik … A + E 4ever   
+##  5 A Bear&#39;s …  2.73e7 Ménage Po… Erotica|Me… Most days, Oli… A Bear&#39;s Jour…
+##  6 A Bear&#39;s …  4.06e7 Polyfi Tr… Paranormal… Most days, Oli… A Bear&#39;s Jour…
+##  7 A Bear&#39;s …  2.71e7 Ménage Po… Erotica|Me… Charlotte “Cha… A Bear&#39;s Mercy
+##  8 A Bear&#39;s …  4.06e7 Polyfi Tr… Menage|M M… Charlotte “Cha… A Bear&#39;s Mercy
+##  9 A Bear&#39;s …  2.68e7 Ménage Po… Erotica|Me… Quinn Taylor h… A Bear&#39;s Neme…
+## 10 A Bear&#39;s …  4.05e7 Polyfi Tr… Fantasy|Pa… Quinn Taylor h… A Bear&#39;s Neme…
+## # … with 1,169 more rows</code></pre>
+<p>(Some of the duplicate entries are evident.) My goal here is to represent these 1,179 book entries as points (or vectors) in some low-dimensional space, based on the co-occurrence of words in their descriptions. Ideally, the coordinate dimenisons of this space will correspond to identifiable features that will help characterize the dimensions <em>and</em> allow the dimensions to characterize individual books in turn. If the number of dimensions is low enough, then it will also be possible to visualize the point cloud and coordinate vectors.</p>
+<div id="word-counts" class="section level3">
+<h3>word counts</h3>
+<p>Adapting a workflow from <a href="https://www.tidytextmining.com/">the tidytext book</a>, i first “unnest” the book list—in <a href="https://tidyr.tidyverse.org/reference/unnest.html">the tidyr sense</a>, except using a tidytext method specific to strings of written language. “Stop” words are articles, prepositions, and other words that add little to no value to a text analysis; instances of them in the unnested data are excluded via an <a href="https://dplyr.tidyverse.org/reference/join.html">anti-join</a>. Finally, i count the number of times each word is used in each description as a new variable <span class="math inline">\(n\)</span>.</p>
+<pre class="r"><code>library(tidytext)
+polyamory_booklist %&gt;%
+  mutate(clean_descr = str_replace_all(description, &quot;[^[:alpha:]\\s]&quot;, &quot; &quot;)) %&gt;%
+  mutate(clean_descr = str_trim(clean_descr)) %&gt;%
+  select(-description) %&gt;%
+  unnest_tokens(word, clean_descr) %&gt;%
+  anti_join(stop_words, by = &quot;word&quot;) %&gt;%
+  count(title, short_title, id, lists, genres, word, name = &quot;n&quot;) %&gt;%
+  print() -&gt; polybooks_wordcounts</code></pre>
+<pre><code>## # A tibble: 76,194 x 7
+##    title       short_title       id lists     genres         word         n
+##    &lt;chr&gt;       &lt;chr&gt;          &lt;int&gt; &lt;chr&gt;     &lt;chr&gt;          &lt;chr&gt;    &lt;int&gt;
+##  1 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… backdrop     1
+##  2 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… beloved      1
+##  3 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… celebra…     1
+##  4 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… de           1
+##  5 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… delicate     1
+##  6 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… flowers      1
+##  7 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… hot          1
+##  8 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… isla         1
+##  9 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… love         2
+## 10 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… matilde      1
+## # … with 76,184 more rows</code></pre>
+<p>A couple more word counts that will be useful downstream are the number <span class="math inline">\(d\)</span> of book descriptions that use each word and the total number <span class="math inline">\(m\)</span> of uses across the corpus.</p>
+<pre class="r"><code>polybooks_wordcounts %&gt;%
+  left_join(
+    polybooks_wordcounts %&gt;%
+      group_by(word) %&gt;%
+      summarize(d = n(), m = sum(n)),
+    by = c(&quot;word&quot;)
+  ) %&gt;%
+  filter(m &gt;= 12) %&gt;%
+  arrange(desc(d), desc(n)) %&gt;%
+  print() -&gt; polybooks_wordusages</code></pre>
+<pre><code>## # A tibble: 48,020 x 9
+##    title      short_title      id lists  genres     word      n     d     m
+##    &lt;chr&gt;      &lt;chr&gt;         &lt;int&gt; &lt;chr&gt;  &lt;chr&gt;      &lt;chr&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt;
+##  1 What Love… What Love Is 2.95e7 Best … Nonfictio… love     16   495  1226
+##  2 The Four … The Four Lo… 3.06e4 Books… Christian… love     14   495  1226
+##  3 The Futur… The Future … 7.21e5 Books… Relations… love     14   495  1226
+##  4 Why We Lo… Why We Love  1.32e5 Sex, … Psycholog… love     14   495  1226
+##  5 Longing f… Longing for… 1.73e7 Sex, … &quot;&quot;         love     13   495  1226
+##  6 The Art o… The Art of … 1.41e4 Books… Psycholog… love     13   495  1226
+##  7 Rogue Eve… Rogue Ever … 4.52e7 FFF+ … Romance|C… love     12   495  1226
+##  8 Ardently:… Ardently     2.56e7 Books… Classics|… love     11   495  1226
+##  9 Love Magi… Love Magic   1.36e7 Sex, … &quot;&quot;         love     10   495  1226
+## 10 In Praise… In Praise o… 1.36e7 Books… Philosoph… love      9   495  1226
+## # … with 48,010 more rows</code></pre>
+<p>2,197 distinct words appear in these descriptions (omitting the stop words).
+Happily, the most prevalent (and, it turns out, most frequent) word in these descriptions is “love”. &lt;83</p>
+</div>
+<div id="relative-frequencies" class="section level3">
+<h3>relative frequencies</h3>
+<p>Its ubiquity makes “love” unlikely to be an effective token for the purpose of mapping this book collection in coordinate space: If a feature describes everything, then it describes nothing. The traditional usefulness weighting on words is instead the <em>term frequency–inverse document frequency</em>, or <em>tf-idf</em>. This is the product of two quotients: the term frequency <span class="math inline">\(\frac{n}{N}\)</span> for a given book, where <span class="math inline">\(N\)</span> is the number of words in its description; and (the logarithm of) the inverse of the document frequency <span class="math inline">\(\frac{d}{D}\)</span>, where <span class="math inline">\(D\)</span> is the number of books (descriptions) in the corpus. The tidytext package provides a helper function for this step, <code>bind_tf_idf()</code>, which obviates the previous chunk. Additionally i’ve filtered out the less discriminating words (having maximum td-idf at most <span class="math inline">\(0.1\)</span>):</p>
+<pre class="r"><code>polybooks_wordcounts %&gt;%
+  bind_tf_idf(word, id, n) %&gt;%
+  group_by(word) %&gt;% filter(max(tf_idf) &gt; .1) %&gt;% ungroup() %&gt;%
+  select(title, short_title, id, lists, genres, word, tf_idf) %&gt;%
+  print() -&gt; polybooks_tfidf</code></pre>
+<pre><code>## # A tibble: 59,759 x 7
+##    title       short_title       id lists     genres         word    tf_idf
+##    &lt;chr&gt;       &lt;chr&gt;          &lt;int&gt; &lt;chr&gt;     &lt;chr&gt;          &lt;chr&gt;    &lt;dbl&gt;
+##  1 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… backdr… 0.189 
+##  2 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… beloved 0.136 
+##  3 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… celebr… 0.171 
+##  4 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… de      0.136 
+##  5 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… delica… 0.162 
+##  6 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… flowers 0.189 
+##  7 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… hot     0.0738
+##  8 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… isla    0.212 
+##  9 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… love    0.0573
+## 10 100 Love S… 100 Love Sonn… 11339 Books on… Poetry|Classi… matilde 0.235 
+## # … with 59,749 more rows</code></pre>
+<p>I’ll use these remaining 9,005 words to make a first pass at gauging the dimensionality of the corpus and visualizing the books and features, using classical PCA. This requires widening the table into a classical data matrix having one row per book, one column per word, and log-transformed tf-idf values (to better mimic normality). The words are capitalized to prevent conflicts with existing column names, and a separate tibble includes only the metadata.</p>
+<pre class="r"><code>polybooks_tfidf %&gt;%
+  mutate(log_tf_idf = log(tf_idf)) %&gt;%
+  select(-tf_idf) %&gt;%
+  mutate(word = toupper(word)) %&gt;%
+  spread(word, log_tf_idf, fill = 0) -&gt;
+  polybooks_tfidf_wide
+polybooks_tfidf_wide %&gt;%
+  select(title, short_title, id, lists, genres) -&gt;
+  polybooks_meta</code></pre>
+<p>R implementations of ordination methods tend to produce atrociously unreadable output when sample sizes and variable dimensions grow large, so this is an especially apt place to invoke <a href="https://github.com/corybrunson/ordr">ordr</a>.<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a> The ID numbers serve as unique identifiers, just in case duplicate entries for the same book have exactly the same title, and so short titles are bound back in after the PCA:</p>
+<pre class="r"><code>library(ordr)
+polybooks_tfidf_wide %&gt;%
+  select(-title, -short_title, -lists, -genres) %&gt;%
+  column_to_rownames(&quot;id&quot;) %&gt;%
+  as.matrix() %&gt;%
+  prcomp() %&gt;%
+  as_tbl_ord() %&gt;%
+  augment() %&gt;%
+  bind_cols_u(select(polybooks_meta, short_title)) %&gt;%
+  print() -&gt; polybooks_pca</code></pre>
+<pre><code>## # A tbl_ord of class &#39;prcomp&#39;: (1170 x 1170) x (9005 x 1170)&#39;
+## # 1170 coordinates: PC1, PC2, ..., PC1170
+## # 
+## # U: [ 1170 x 1170 | 2 ]
+##     PC1     PC2      PC3 ... |   .name   short_title             
+##                              |   &lt;chr&gt;   &lt;chr&gt;                   
+## 1 -3.12  0.0527 -0.00351     | 1 11339   100 Love Sonnets        
+## 2  2.69 -3.08    3.14    ... | 2 161489… 199 Ways To Improve You…
+## 3  1.93  1.14    0.819       | 3 352771… 30th Century            
+## 4  1.52 -0.958  -0.255       | 4 124467… A + E 4ever             
+## 5  2.71  4.21   -1.04        | 5 272627… A Bear&#39;s Journey        
+## # … with 1,165 more rows
+## # 
+## # V: [ 9005 x 1170 | 2 ]
+##         PC1         PC2        PC3 ... |   .name       .center
+##                                        |   &lt;chr&gt;         &lt;dbl&gt;
+## 1  0.00340   0.0000956   0.00569       | 1 À         -0.0182  
+## 2 -0.00138   0.00104    -0.000921  ... | 2 AARON     -0.00836 
+## 3 -0.00236  -0.00257     0.00216       | 3 ABANDONED -0.0203  
+## 4  0.000251  0.0000375  -0.0000183     | 4 ABBEY     -0.000521
+## 5  0.000370  0.00000365  0.000444      | 5 ABBI      -0.00174 
+## # … with 9,000 more rows</code></pre>
+<p>The ubiquitous scree plot helps gauge the dimensionality of the tf-idf space, though for readability i’m restricting it to the principal components (PCs) that account for at least <span class="math inline">\(0.4\%\)</span> of the total variance each:</p>
+<pre class="r"><code>polybooks_pca %&gt;%
+  fortify(.matrix = &quot;coord&quot;) %&gt;%
+  filter(.prop_var &gt; .004) %&gt;%
+  ggplot(aes(x = .name, y = .prop_var)) +
+  geom_bar(stat = &quot;identity&quot;) +
+  labs(x = &quot;&quot;, y = &quot;Proportion of variance&quot;) +
+  theme(axis.text.x = element_text(angle = 90))</code></pre>
+<p><img src="/post/2019-10-25-goodreads-polyamory_files/figure-html/pca%20scree%20plot-1.png" width="768" /></p>
+<p>This is not promising: The first PC accounts for less than one fortieth of the total variation, though the remaining PCs are even less distinctive. A 1-dimensional biplot would make the most sense, but in order to add some annotation i’m extending it to 2 dimensions, with the caveat that the second, vertical dimension should be understood—for any specific slice along PC1—as a more or less arbitrary perspective on a more or less spherical cloud. I’ll highlight and label the convex hull of the projected cloud to help think about how the books are dispersed:</p>
+<pre class="r"><code>ggbiplot(polybooks_pca) +
+  geom_u_point(alpha = .5) +
+  geom_u_point(stat = &quot;chull&quot;, color = &quot;red&quot;) +
+  geom_u_label_repel(
+    stat = &quot;chull&quot;, aes(label = short_title),
+    color = &quot;red&quot;, alpha = .75, size = 3
+  ) +
+  scale_x_continuous(expand = expand_scale(mult = c(0.4, 0.1)))</code></pre>
+<p><img src="/post/2019-10-25-goodreads-polyamory_files/figure-html/pca%20biplot-1.png" width="576" style="display: block; margin: auto;" /></p>
+<p>The biplot exhibits a common pattern, with the bulk of observations clumped together in a corner and an increasingly thin periphery pushing conically outward. This pattern tends to emerge when the underlying variables are better understood as <em>features</em> than as <em>spectra</em>: When two distinctive and mutually repulsive (not necessarily to say mutually exclusive) features describe a data set, PCA will tend to yield a boomerang shape along the first two PCs. A classic example of this is a set of clinical and laboratory test data <a href="https://link.springer.com/article/10.1007/BF00423145">collected by Reaven and Miller</a> for a diabetic cohort, <a href="https://cran.r-project.org/web/packages/candisc/vignettes/diabetes.html">illustrated here by Friendly</a>. When more features are present and remain mutually repulsive, the resulting bouquets tend to project onto PC1 and PC2 as cones.
+This is in contrast to settings in which the constituent variables are uncorrelated, in which point clouds, whether high-dimensional or projected onto PCs, tend to be spherical (as discussed in a <a href="2019/08/02/lda/">previous post</a>).</p>
+<p>It might therefore make more sense to get a reading of the books farthest from the clump, i.e. with the most extreme scores along PC1, rather than those on the outskirts of the point cloud on PC1 and PC2 together.<a href="#fn5" class="footnote-ref" id="fnref5"><sup>5</sup></a> To that end, i’ll take the books with the top 12 scores along, and the words with the top 12 loadings onto, PC1:</p>
+<pre class="r"><code>polybooks_pca %&gt;%
+  tidy(.matrix = &quot;both&quot;, include = &quot;all&quot;) %&gt;%
+  select(-starts_with(&quot;PC&quot;), PC1, -.center) %&gt;%
+  group_by(.matrix) %&gt;%
+  arrange(desc(PC1)) %&gt;% 
+  top_n(12, PC1) %&gt;%
+  mutate(name = ifelse(is.na(short_title), tolower(.name), short_title)) %&gt;%
+  ggplot(aes(x = reorder(name, PC1), y = PC1)) +
+  facet_wrap(~ .matrix, scales = &quot;free&quot;) +
+  coord_flip() +
+  geom_bar(stat = &quot;identity&quot;) +
+  labs(x = &quot;Score / Loading&quot;)</code></pre>
+<p><img src="/post/2019-10-25-goodreads-polyamory_files/figure-html/unnamed-chunk-1-1.png" width="768" /></p>
+<p>The scores and loadings are likewise not very discriminating, but they are suggestive of the varieties of polyamory or poly-adjacent literature that push up against its boundaries: Many of the titles suggest niche subgenres of fiction, alongside some general advice or lifestyle volumes. Words like “magical”, “vampire”, “murdered”, “ancient”, and, i’d say, even “city” and “begins” are indicative of the former, while “text” and “academy” may be of the latter.
+Overall, though, this is not a very informative dimension. Rather than separating one genre from others, it’s detecting unique descriptions from a medley of genres. And this is just what one might expect from the conical shape of the point cloud.</p>
+<p>So, it seems likely that discriminating features exist along which these descriptions are organized, though principal components—which by definition capture variation, not distinction—aren’t a good tool for detecting them.
+This is still good news for my ultimate goal of identifying these features. In a follow-up post i’ll use a couple of different tactics, one from text mining and the other not yet widely used.</p>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Though making word frequency data publicly available would presumably be straightforward to do and have if anything a positive impact on sales.<a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn2"><p>An entry may have multiple editions, but these never introduced redundancies in my workflow.<a href="#fnref2" class="footnote-back">↩</a></p></li>
+<li id="fn3"><p>I make a habit of posting “combine requests” for the Goodreads Librarians Group whenever i come across such instances)<a href="#fnref3" class="footnote-back">↩</a></p></li>
+<li id="fn4"><p>Still very much a work in progress.<a href="#fnref4" class="footnote-back">↩</a></p></li>
+<li id="fn5"><p>Though it is interesting to me that <em>Fahrenheit 451</em> appears so unremarkable through this lens.<a href="#fnref5" class="footnote-back">↩</a></p></li>
+</ol>
+</div>

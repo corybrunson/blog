@@ -7,6 +7,8 @@
 # generated files
 # undated (draft) posts
 content/post/[a-z]*.html
+draft/*.html
+
 # supplementary data
 supplementary/*.rds
 
