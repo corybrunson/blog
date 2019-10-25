@@ -1,5 +1,5 @@
 ---
-draft: true
+draft: false
 title: the dimensions of (abstracted) polyamory literature
 author: ~
 date: 2019-10-25
