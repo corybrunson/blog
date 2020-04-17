@@ -1,0 +1,169 @@
+---
+draft: false
+title: how to calculate aesthetics in a ggplot2 extension
+author: ~
+date: 2020-04-17
+slug: calculate-aesthetics
+categories: [methodology]
+tags: [r,ggplot2,software packages]
+---
+
+```{r knitr options, echo=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+library(ggplot2)
+```
+
+## how to use computed variables
+
+One of the many subtle features of ggplot2 is the ability to pass variables to aesthetics that are not present in the data but rather are computed internally by a statistical transformation (stat). For users, [the documentation for this feature](https://ggplot2.tidyverse.org/reference/stat.html) illustrates the use of `stat(<variable>)` (previously `..<variable>..`, since upgraded to `after_stat(<variable>)`) in an aesthetic specification.
+
+Some stats do this by default. For example, the count stat sends its computed `count` to both coordinate aesthetics by default. Because it requires _exactly_ one of them to be specified, only the other receives the count:
+
+```{r}
+print(StatCount$default_aes)
+print(StatCount$required_aes)
+```
+
+This is how the count stat supports its companion graphical element, the bar geom. This geom needs both the categorical variable from the data and the count variable computed by the stat in order to produce a _(frequency) bar plot_. The code below, which tallies the cars in the `mpg` data set by classification, makes some of this implicit control explicit:
+
+```{r}
+table(mpg$class)
+ggplot(mpg) +
+  stat_count(aes(x = class, y = after_stat(count)))
+```
+
+More than calling single variables, `after_stat()` can also perform and return calculations involving these variables. For example, to produce a _relative (frequency) bar plot_ of the classified cars, the `y` variable needs not the raw counts but what proportion they make up of the total Note the `y` axis range in this revised plot:
+
+```{r}
+ggplot(mpg) +
+  stat_count(aes(x = class, y = after_stat(count / sum(count)))) +
+  scale_y_continuous(labels = scales::percent)
+```
+
+More illustrations can be found in the aforelinked documentation, which are reasonably intuitive from a user's perspective. Though it's not immediately evident where `after_stat()` locates these computed variables and what the limits are to its ability to perform calculations on them. The documentation `help(after_stat)` thoroughly tracks the processing of an aesthetic from start to stat to scale, but again with users in mind.
+
+## how to make computed variables
+
+Another exceptional feature of ggplot2 is its extensibility. Users with specialized plotting needs can, with limited exposure to the package internals, write [stats and geoms that produce new types of plots](https://exts.ggplot2.tidyverse.org/gallery/). Because they are extensions, rather than standalone packages, they benefit from the grammatical rigor of ggplot2 and often combine well with existing stats and geoms.
+
+From a developer's perspective, especially someoene like myself with limited low-level programming experience, computed variables can appear mysterious.
+Yet, they are perhaps the single easiest feature to include in a ggplot2 extension.
+
+To illustrate, consider this simplified custom stat from [the vignette on extending ggplot2](https://ggplot2.tidyverse.org/articles/extending-ggplot2.html):
+
+```{r}
+# a custom ggproto stat to fit a linear model to data
+StatLm <- ggproto("StatLm", Stat, 
+  required_aes = c("x", "y"),
+  
+  compute_group = function(data, scales, params, n = 100, formula = y ~ x) {
+    rng <- range(data$x, na.rm = TRUE)
+    grid <- data.frame(x = seq(rng[1], rng[2], length = n))
+    
+    mod <- lm(formula, data = data)
+    grid$y <- predict(mod, newdata = grid)
+    
+    grid
+  }
+)
+# a corresponding stat layer
+stat_lm <- function(mapping = NULL, data = NULL, geom = "line",
+                    position = "identity", na.rm = FALSE, show.legend = NA, 
+                    inherit.aes = TRUE, n = 50, formula = y ~ x, 
+                    ...) {
+  layer(
+    stat = StatLm, data = data, mapping = mapping, geom = geom, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(n = n, formula = formula, na.rm = na.rm, ...)
+  )
+}
+# an illustration of the stat
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  stat_lm()
+```
+
+The computation step of this linear model stat returns a data frame `grid` with two columns: a regular sequence of `x` values spanning the range of engine displacement volumes in the data set, whose number are determined by the parameter `n`; and the predicted highway speed `y` at each, according to the internally-fitted model `mod`. Notice that the data returned by the stat is differently sized than the data passed to it:
+
+```{r}
+dim(mpg)
+head(mpg)
+data <- transform(mpg, x = displ, y = hwy)[, c("x", "y")]
+dim(StatLm$compute_group(data))
+head(StatLm$compute_group(data))
+```
+
+The predictions computed by the stat are estimates of conditional means (under a set of assumptions outside the scope of this example), and it's often useful for a plot to encode the uncertainty of those estimates graphically. First, the uncertainty must be computed by the stat, as below by including a standard error calculation at the `predict()` step:
+
+```{r}
+# the linear model ggproto stat, with a computed variable for standard error
+StatLm <- ggproto("StatLm", Stat, 
+  required_aes = c("x", "y"),
+  
+  compute_group = function(data, scales, params, n = 100, formula = y ~ x) {
+    rng <- range(data$x, na.rm = TRUE)
+    grid <- data.frame(x = seq(rng[1], rng[2], length = n))
+    
+    mod <- lm(formula, data = data)
+    pred <- predict(mod, newdata = grid, se.fit = TRUE)
+    grid$y <- pred$fit
+    grid$yse <- pred$se.fit
+    
+    grid
+  }
+)
+```
+
+In addition to `x` and `y`, the data frame computed by the stat now includes a `yse` column, containing the standard errors of the predicted means contained in `y`:
+
+```{r}
+head(StatLm$compute_group(data))
+```
+
+Paired with the ribbon geom, this stat can now produce a 95% confidence band for the mean highway speeds predicted for the full range of engine displacement volumes[^se]:
+
+[^se]: Note that the `yse` are _not_ standard errors for the estimates; hence, the confidence bands do not represent expected prediction errors. This confusion seems to inflame tempers, if top search results are any indication.
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  stat_lm(geom = "ribbon", alpha = .2,
+          aes(ymin = after_stat(y - 2 * yse), ymax = after_stat(y + 2 * yse))) +
+  stat_lm()
+```
+
+As a concluding caveat, i haven't dug far enough into the ggplot2 source code to know exactly how the expressions fed to `after_stat()` are evaluated. In principle, if a stat returns the data frame `ret`, then `after_stat(<expression>)` is evaluated like `with(ret, <expression>)`. In particular, objects in the global environment are recognized:
+
+```{r}
+z <- 3
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  stat_lm(geom = "ribbon", alpha = .2,
+          aes(ymin = after_stat(y - z * yse), ymax = after_stat(y + z * yse))) +
+  stat_lm()
+```
+
+Finally, to document new computed variables, the natural thing to do is mimic the documentation of those in the main package---for example, [`help(stat_count)`](https://github.com/tidyverse/ggplot2/blob/master/R/stat-count.r). Here is some minimal documentation for the standard error variable:
+
+```{r}
+#' @section Computed variables:
+#' \describe{
+#'   \item{yse}{standard error of predicted means}
+#' }
+```
+
+In a pinch, the computed variables may be gleaned from the source code for the relevant compute method of the stat---if the internals are concise and tidy enough. Since the count stat performs group-wise tallies, the method to inspect is `StatCount$compute_group()`:
+
+```{r}
+print(StatCount$compute_group)
+```
+
+Indeed, `count` is not the only variable computed by the stat. The code is specialized, but it's clear that some additional variables---`prop`, `x`, and `width`---are computed as well. The last two are meant for the paired geom; they _could_ be invoked using `after_stat()`, but this is not their intended role, and they are not documented among the computed stats. The documentation serves dual purposes: enable intended use, and avert unintended use.
+
+## conclusion
+
+To sum up the topic for ggplot2 extension developers:
+
+* A _computed variable_ is just a column of the data frame returned by `Stat*$compute_*()`.
+* Any expression involving such computed variables can be passed as a _calculated aesthetic_ via `aes(<aes> = after_stat(<expr>))`.
+* Users should be able to learn about computed variables in a specific **Computed variables** section of the documentation for such a stat.
