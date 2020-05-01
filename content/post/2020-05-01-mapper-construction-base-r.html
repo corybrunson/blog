@@ -1,0 +1,181 @@
+---
+draft: false
+title: "the mapper construction in base R"
+author: ~
+date: 2020-05-01
+slug: mapper-construction-base-r
+categories: [methodology]
+tags: [mapper,rstats,topological data analysis]
+---
+
+
+
+<p>Several mature, open-source implementations of <a href="http://diglib.eg.org/handle/10.2312/SPBG.SPBG07.091-100">the mapper construction</a> now exist, including the standalone <a href="http://danifold.net/mapper/index.html">Python Mapper</a> module and <a href="https://kepler-mapper.scikit-tda.org/">KeplerMapper</a>, part of the scikit family. I’m currently experimenting with Matt Piekenbrock’s R package <a href="https://github.com/peekxc/Mapper/">Mapper</a>, which is not on CRAN but makes—from my beginner’s vantage point—exemplary use of the R6 system.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a></p>
+<p>What these implementations have in common is that the underlying construction is mostly hidden from view. Users can specify its constituent parts, but what gets visualized is almost exclusively either</p>
+<ul>
+<li>the lensed (or filtered) point cloud, usually in two dimensions; or</li>
+<li>the simplicial complex, usually annotated by size and color.</li>
+</ul>
+<p>This is fine of course for routine experimental or practical use, but it limits the pedagogical potential of these tools.</p>
+<p>The most rapidly i’ve come to understand the construction has been through implementation. In fact, it’s tedius but not terribly time-consuming to construct a mapper entirely in base R.<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> The following “implementation” is taken from a document i’ve been using internally to convey the basic idea of mapper and to illustrate the effects of different choices of cover. Maybe you can find more illustrative uses for it, but i recommend against building an analysis pipeline around it!</p>
+<div id="precap" class="section level2">
+<h2>precap</h2>
+<p>Briefly, here is some notation for the elements of the construction, adapted from <a href="https://link.springer.com/article/10.1007/s11538-019-00614-z">Mémoli and Singhal</a>:</p>
+<ul>
+<li><span class="math inline">\(X\)</span> – the point cloud (a finite metric space)</li>
+<li><span class="math inline">\(f:X\to Z\)</span> – the lens function from <span class="math inline">\(X\)</span> to the lens space <span class="math inline">\(Z\)</span></li>
+<li><span class="math inline">\(\mathcal{U}=\{U_i\}\)</span> – the cover of <span class="math inline">\(f(X)\)</span>, usually inferred from (and used interchangeably with) a finite cover of a subset <span class="math inline">\(S\subset Z\)</span> that contains <span class="math inline">\(f(X)\)</span></li>
+<li><span class="math inline">\(\delta:X\times X\to\mathbb{R}_{\geq0}\)</span> – the distance metric on <span class="math inline">\(X\)</span></li>
+<li><span class="math inline">\(C:\mathcal{M}\to\mathcal{P}\)</span> – the clustering method, based on <span class="math inline">\(\delta\)</span>, that sends metric spaces <span class="math inline">\(Y\subseteq X\)</span> to partitions of their elements</li>
+<li><span class="math inline">\(\mathcal{V}=\{V_{ij}\}=\bigcup_i{C(f^{-1}(U_i))}\)</span> – the refinement of the pullback cover <span class="math inline">\(\{f^{-1}\mathcal{U}\}\)</span> of <span class="math inline">\(X\)</span> obtained by partitioning each subset <span class="math inline">\(f^{-1}(U_i)\subset X\)</span></li>
+<li><span class="math inline">\(N\)</span> – the nerve of <span class="math inline">\(\mathcal{V}\)</span>, comprising a simplex for every non-empty intersection of sets in <span class="math inline">\(\mathcal{V}\)</span></li>
+</ul>
+</div>
+<div id="construction" class="section level2">
+<h2>construction</h2>
+<p>I’ll begin with probably the most common toy example, the noisy circle. Since this isn’t part of the construction per se, i’m allowing myself the vanity of invoking <a href="https://github.com/corybrunson/tdaunif/">a manifold sampling package</a> under development with two high school interns:</p>
+<pre class="r"><code>set.seed(2)
+# point cloud
+x &lt;- tdaunif::sample_circle(n = 120, sd = .1)
+x[, 2] &lt;- x[, 2] + 1.5
+print(head(x))</code></pre>
+<pre><code>##                x         y
+## [1,]  0.21900250 2.3144202
+## [2,] -0.09167245 0.4182471
+## [3,] -0.96604574 1.0946227
+## [4,]  0.50825992 2.2572006
+## [5,]  0.98900895 1.2088241
+## [6,]  0.85559229 1.2699230</code></pre>
+<p>I’ve shifted the coordinates upward for downstream plotting purposes. Note that this point cloud <span class="math inline">\(X\)</span> exists in <span class="math inline">\(\mathbb{R}^2\)</span> but that i have not yet declared a distance metric <span class="math inline">\(\delta\)</span> on <span class="math inline">\(X\)</span>.</p>
+<p>The lens (or filter) <span class="math inline">\(f\)</span> is usually (a) obtained via dimensionality reduction on the <span class="math inline">\(X\)</span> or (b) taken to be a meaningful stratification variable of or function on <span class="math inline">\(X\)</span>. This example takes approach (a), projecting <span class="math inline">\(X\)</span> to its first coordinate:</p>
+<pre class="r"><code># lensed point cloud
+f &lt;- x[, 1]
+print(head(f))</code></pre>
+<pre><code>## [1]  0.21900250 -0.09167245 -0.96604574  0.50825992  0.98900895  0.85559229</code></pre>
+<p>For ease of visualization as well as personal preference, i’ll use a fixed-width interval cover <span class="math inline">\(\mathcal{U}=\{U_i\}\)</span> with diameter half that of <span class="math inline">\(f(X)\)</span> and 50% overlap, which comprises five sets. I like this sort of cover because it is (uniformly) <em>2-fold</em>—every point of <span class="math inline">\(f(X)\)</span> is contained in exactly two <span class="math inline">\(U_i\)</span>:</p>
+<pre class="r"><code># cover interval length
+d &lt;- diff(range(f))*1/2
+# cover interval centers
+c &lt;- seq(min(f), max(f), d/2)
+# cover intervals
+u &lt;- cbind(x0 = c - d/2, x1 = c + d/2)
+print(u)</code></pre>
+<pre><code>##                x0           x1
+## [1,] -1.748626379 -0.586016272
+## [2,] -1.167321326 -0.004711219
+## [3,] -0.586016272  0.576593835
+## [4,] -0.004711219  1.157898888
+## [5,]  0.576593835  1.739203942</code></pre>
+<p>The pullback cover <span class="math inline">\(f^{-1}(\mathcal{U})\)</span> of <span class="math inline">\(X\)</span> is a straightforward step that involves no choice on the users part, though note the use of <code>&lt;=</code> and <code>&lt;</code> to ensure (up to mechanical precision) that cover set boundaries are handled correctly:</p>
+<pre class="r"><code># pullback cover sets
+p &lt;- apply(u, 1, function(u_i) which(u_i[1] &lt;= f &amp; f &lt; u_i[2]))
+names(p) &lt;- paste0(seq(p), &quot;:&quot;)
+print(lapply(p, head))</code></pre>
+<pre><code>## $`1:`
+## [1]  3  9 10 11 15 19
+## 
+## $`2:`
+## [1]  2  3  9 10 11 15
+## 
+## $`3:`
+## [1]  1  2  4  7  8 12
+## 
+## $`4:`
+## [1] 1 4 5 6 7 8
+## 
+## $`5:`
+## [1]  5  6 17 20 29 30</code></pre>
+<p>To partition the preimages <span class="math inline">\(f^{-1}(U_i)\in f^{-1}(\mathcal{U})\)</span>, i’ve used the <a href="http://www.jmlr.org/papers/v11/carlsson10a.html">theoretically exceptional</a> method of single-linkage hierarchical clustering, but with a dangerously naïve <em>fixed</em> cutoff at height <span class="math inline">\(\frac{1}{3}\)</span>:</p>
+<pre class="r"><code># clustered pullback cover sets
+cl &lt;- function(p_i) {
+  m &lt;- cutree(hclust(dist(x[p_i, , drop = FALSE]), method = &quot;single&quot;), h = 1/3)
+  lapply(unique(m), function(v_ij) p_i[which(m == v_ij)])
+}
+v &lt;- unlist(lapply(p, cl), recursive = FALSE)
+print(lapply(v, head))</code></pre>
+<pre><code>## $`1:`
+## [1]  3  9 10 11 15 19
+## 
+## $`2:`
+## [1]  2  3  9 10 11 15
+## 
+## $`3:1`
+## [1]  1  4  7 12 14 18
+## 
+## $`3:2`
+## [1]  2  8 13 16 21 23
+## 
+## $`4:`
+## [1] 1 4 5 6 7 8
+## 
+## $`5:`
+## [1]  5  6 17 20 29 30</code></pre>
+<p>While the clusters <span class="math inline">\(V_{ij}\)</span> will be encoded as vertices, higher-dimensional simplices will represent overlaps <span class="math inline">\(V_{ij}\cap V_{i&#39;j&#39;}\)</span> among them (<span class="math inline">\(i\neq i&#39;\)</span>). Happily, because the cover is 2-fold, any lensed point <span class="math inline">\(f(x)\)</span> lies in the intersection <span class="math inline">\(U_i\cap U_{i&#39;}\)</span> of at most two cover sets, so in this case we only have to worry about edges between <em>pairs</em> of vertices. Moreover, the only intersections to check are those between cover sets of adjacent indices <span class="math inline">\(i&#39;\in\{i-1,i+1\}\)</span>:</p>
+<pre class="r"><code># matrix of pairwise overlaps
+b &lt;- matrix(NA, nrow = 0, ncol = 2)
+for (ij in seq(length(v) - 1)) {
+  i &lt;- as.integer(gsub(&quot;:.*$&quot;, &quot;&quot;, names(v)[[ij]]))
+  i1js &lt;- grep(paste0(&quot;^&quot;, i + 1, &quot;:&quot;), names(v))
+  for (i1j in i1js) {
+    if (length(intersect(v[[ij]], v[[i1j]])) &gt; 0) {
+      b &lt;- rbind(b, c(ij, i1j))
+    }
+  }
+}
+print(b)</code></pre>
+<pre><code>##      [,1] [,2]
+## [1,]    1    2
+## [2,]    2    3
+## [3,]    2    4
+## [4,]    3    5
+## [5,]    4    5
+## [6,]    5    6</code></pre>
+<p>(It’s possible, just cumbersome, to handle arbitrary covers and arbitrarily high-dimensional simplices.)</p>
+</div>
+<div id="visualization" class="section level2">
+<h2>visualization</h2>
+<p>The whole process is visualized below, also in base R (with the exception of a <a href="https://colorbrewer2.org/">ColorBrewer</a> palette), with comments separating the steps. To construct constituent frames of a gif or slideshow, just execute progressively more commented chunks from start to end.<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a></p>
+<pre class="r"><code>plot.new()
+plot.window(c(-1.25, 1.25), c(0, 2.75), asp = 1)
+# point cloud
+points(x, pch = 19, cex = .5)
+# lens
+lines(x = c(-2, 2), y = c(0, 0), lty = 1)
+rug(f, pos = 0)
+# cover
+u_cols &lt;- RColorBrewer::brewer.pal(nrow(u), &quot;Set1&quot;)
+segments(
+  x0 = u[, 1] + .015, x1 = u[, 2] - .015,
+  y0 = c(-.1, -.2), col = u_cols, lwd = 3
+)
+l_nudge &lt;- rep_len(c(T, F), length.out = nrow(u))
+# pullback cover
+rect(
+  xleft = u[, 1] + .015, xright = u[, 2] - .015,
+  ybottom = .15 + .2*l_nudge, ytop = 2.65 + .2*l_nudge,
+  col = paste0(u_cols, &quot;77&quot;), border = NA
+)
+# nerve
+n_lay &lt;- t(sapply(seq_along(v), function(i) {
+  apply(x[v[[i]], , drop = FALSE], 2, mean)
+}))
+for (i in seq(nrow(b))) lines(x = n_lay[b[i, ], 1], y = n_lay[b[i, ], 2])
+points(x = n_lay[, 1], y = n_lay[, 2],
+       pch = 21, cex = 2, lwd = 2, bg = &quot;white&quot;,
+       col = u_cols[as.integer(gsub(&quot;^([0-9]+)\\:.*$&quot;, &quot;\\1&quot;, names(v)))])</code></pre>
+<p><img src="/post/2020-05-01-mapper-construction-base-r_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<p>I’m pretty sure that this is the only visualization of mapper i’ve seen that</p>
+<ul>
+<li>comes from an implementation on a non-trivial point cloud <em>and</em></li>
+<li>represents every step in the construction.</li>
+</ul>
+<p>I general, it would be difficult to visualize the mapper internals like this, for example when <span class="math inline">\(Z\)</span> isn’t low-enough-dimensional or <span class="math inline">\(f\)</span> is not a linear projection of <span class="math inline">\(X\)</span>. But i think it poses an interesting challenge—for example, given any lens <span class="math inline">\(f:X\to\mathbb{R}\)</span>, to find a map <span class="math inline">\(g:X\to\mathbb{R}\)</span> such that <span class="math inline">\(x\mapsto(f(x),g(x))\)</span> roughly preserves distances—and i’d be keen to see the results.</p>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>I’m in a book club with a colleague on Wickham’s <a href="https://adv-r.hadley.nz/"><em>Advanced R</em></a>, and we should arrive at <a href="https://adv-r.hadley.nz/r6.html">the R6 chapter</a> in a month or two.<a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn2"><p>OK, i’m actually using the usual distribution of R, including <code>stats::hclust()</code> for example.<a href="#fnref2" class="footnote-back">↩</a></p></li>
+<li id="fn3"><p>I’ve used the resulting images in a slideshow to mixed effect. Be sure to check slides on the system you’ll be using to present them!<a href="#fnref3" class="footnote-back">↩</a></p></li>
+</ol>
+</div>

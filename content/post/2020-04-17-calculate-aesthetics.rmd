@@ -5,7 +5,7 @@ author: ~
 date: 2020-04-17
 slug: calculate-aesthetics
 categories: [methodology]
-tags: [r,ggplot2,software packages]
+tags: [rstats,ggplot2,software packages]
 ---
 
 ```{r knitr options, echo=FALSE}

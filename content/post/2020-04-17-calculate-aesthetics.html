@@ -5,7 +5,7 @@ author: ~
 date: 2020-04-17
 slug: calculate-aesthetics
 categories: [methodology]
-tags: [r,ggplot2,software packages]
+tags: [rstats,ggplot2,software packages]
 ---
 
 
@@ -28,12 +28,12 @@ tags: [r,ggplot2,software packages]
 ##          5         47         41         11         33         35         62</code></pre>
 <pre class="r"><code>ggplot(mpg) +
   stat_count(aes(x = class, y = after_stat(count)))</code></pre>
-<p><img src="/post/2020-04-03-calculate-aesthetics_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<p><img src="/post/2020-04-17-calculate-aesthetics_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
 <p>More than calling single variables, <code>after_stat()</code> can also perform and return calculations involving these variables. For example, to produce a <em>relative (frequency) bar plot</em> of the classified cars, the <code>y</code> variable needs not the raw counts but what proportion they make up of the total Note the <code>y</code> axis range in this revised plot:</p>
 <pre class="r"><code>ggplot(mpg) +
   stat_count(aes(x = class, y = after_stat(count / sum(count)))) +
   scale_y_continuous(labels = scales::percent)</code></pre>
-<p><img src="/post/2020-04-03-calculate-aesthetics_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p><img src="/post/2020-04-17-calculate-aesthetics_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
 <p>More illustrations can be found in the aforelinked documentation, which are reasonably intuitive from a user’s perspective. Though it’s not immediately evident where <code>after_stat()</code> locates these computed variables and what the limits are to its ability to perform calculations on them. The documentation <code>help(after_stat)</code> thoroughly tracks the processing of an aesthetic from start to stat to scale, but again with users in mind.</p>
 </div>
 <div id="how-to-make-computed-variables" class="section level2">
@@ -71,7 +71,7 @@ stat_lm &lt;- function(mapping = NULL, data = NULL, geom = &quot;line&quot;,
 ggplot(mpg, aes(displ, hwy)) + 
   geom_point() + 
   stat_lm()</code></pre>
-<p><img src="/post/2020-04-03-calculate-aesthetics_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p><img src="/post/2020-04-17-calculate-aesthetics_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
 <p>The computation step of this linear model stat returns a data frame <code>grid</code> with two columns: a regular sequence of <code>x</code> values spanning the range of engine displacement volumes in the data set, whose number are determined by the parameter <code>n</code>; and the predicted highway speed <code>y</code> at each, according to the internally-fitted model <code>mod</code>. Notice that the data returned by the stat is differently sized than the data passed to it:</p>
 <pre class="r"><code>dim(mpg)</code></pre>
 <pre><code>## [1] 234  11</code></pre>
@@ -128,7 +128,7 @@ StatLm &lt;- ggproto(&quot;StatLm&quot;, Stat,
   stat_lm(geom = &quot;ribbon&quot;, alpha = .2,
           aes(ymin = after_stat(y - 2 * yse), ymax = after_stat(y + 2 * yse))) +
   stat_lm()</code></pre>
-<p><img src="/post/2020-04-03-calculate-aesthetics_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p><img src="/post/2020-04-17-calculate-aesthetics_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
 <p>As a concluding caveat, i haven’t dug far enough into the ggplot2 source code to know exactly how the expressions fed to <code>after_stat()</code> are evaluated. In principle, if a stat returns the data frame <code>ret</code>, then <code>after_stat(&lt;expression&gt;)</code> is evaluated like <code>with(ret, &lt;expression&gt;)</code>. In particular, objects in the global environment are recognized:</p>
 <pre class="r"><code>z &lt;- 3
 ggplot(mpg, aes(displ, hwy)) + 
@@ -136,7 +136,7 @@ ggplot(mpg, aes(displ, hwy)) +
   stat_lm(geom = &quot;ribbon&quot;, alpha = .2,
           aes(ymin = after_stat(y - z * yse), ymax = after_stat(y + z * yse))) +
   stat_lm()</code></pre>
-<p><img src="/post/2020-04-03-calculate-aesthetics_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p><img src="/post/2020-04-17-calculate-aesthetics_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
 <p>Finally, to document new computed variables, the natural thing to do is mimic the documentation of those in the main package—for example, <a href="https://github.com/tidyverse/ggplot2/blob/master/R/stat-count.r"><code>help(stat_count)</code></a>. Here is some minimal documentation for the standard error variable:</p>
 <pre class="r"><code>#&#39; @section Computed variables:
 #&#39; \describe{
