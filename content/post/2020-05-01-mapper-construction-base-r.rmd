@@ -121,7 +121,7 @@ The whole process is visualized below, also in base R (with the exception of a [
 
 ```{r}
 plot.new()
-plot.window(c(-1.25, 1.25), c(0, 2.75), asp = 1)
+plot.window(c(-1.25, 1.25), c(-.25, 2.75), asp = 1)
 # point cloud
 points(x, pch = 19, cex = .5)
 # lens
